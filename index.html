@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nivas — IIT Hyderabad hostel finder</title>
+    <meta name="description" content="Browse IIT Hyderabad hostels floor by floor, check room availability, and locate friends across the student housing precinct." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
+    <!-- Bump ?v= on every CSS/JS change — shared hosting CDNs serve stale assets otherwise. -->
+    <link rel="stylesheet" href="./styles.css?v=2" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#" aria-label="Nivas home">
+          <span class="brand-mark"><i></i><i></i><i></i></span>
+          <span>NIVAS<small>IIT HYDERABAD</small></span>
+        </a>
+
+        <nav class="main-nav" aria-label="Primary navigation">
+          <button class="nav-item active" data-tab="explore"><span class="nav-icon">⌘</span> Explore hostels</button>
+          <button class="nav-item" data-tab="friends"><span class="nav-icon">♙</span> Find friends <b id="friend-nav-count">0</b></button>
+          <button class="nav-item" data-tab="requests"><span class="nav-icon">⇄</span> Requests <b id="request-nav-count">0</b></button>
+          <button class="nav-item" data-tab="availability"><span class="nav-icon">◌</span> Availability</button>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="resident-mini" id="resident-mini">
+            <div class="avatar" id="profile-avatar">+</div>
+            <div>
+              <strong id="profile-name">Register your stay</strong>
+              <small id="profile-location">Name, roll number &amp; room</small>
+            </div>
+            <button class="icon-btn icon-btn--quiet" id="profile-menu" aria-label="Register profile">···</button>
+          </div>
+          <button class="btn btn--ghost help"><span>?</span> How Nivas works</button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="crumbs"><span>Campus</span><i>›</i><span>Hostel precinct</span><i>›</i><strong id="crumb-building">Bhabha</strong></div>
+          <div class="top-actions">
+            <div class="search">
+              <span>⌕</span>
+              <input id="friend-search" placeholder="Search name, hostel or room" autocomplete="off" aria-label="Search residents and hostels" />
+              <kbd>⌘ K</kbd>
+              <div class="search-results hidden" id="search-results" role="listbox" aria-label="Search results"></div>
+            </div>
+            <button class="notification" aria-label="Notifications">♧<i></i></button>
+          </div>
+        </header>
+
+        <section class="hero" aria-labelledby="page-title">
+          <div>
+            <p class="eyebrow">LIVE HOSTEL MAP · JULY 2026</p>
+            <h1 id="page-title">Your hostel,<br /><em>at a glance.</em></h1>
+            <p class="hero-copy">See room availability, locate friends, and explore every hostel floor in one simple view.</p>
+          </div>
+          <div class="live-summary">
+            <span class="pulse"></span><span>LIVE STATUS</span>
+            <strong id="summary-occupied">1,426</strong><small>residents checked in</small>
+          </div>
+        </section>
+
+        <section class="workspace" aria-label="Hostel visualizer">
+          <div class="toolbar">
+            <div class="building-picker" role="group" aria-label="Building selector">
+              <button class="picker-arrow" id="prev-building" aria-label="Previous hostel">←</button>
+              <button class="building-choice" id="building-choice" aria-expanded="false" aria-haspopup="listbox" aria-controls="building-menu">
+                <span class="building-dot"></span>
+                <span><small>SELECTED HOSTEL</small><strong id="building-name">Bhabha</strong></span>
+                <b>⌄</b>
+              </button>
+              <button class="picker-arrow" id="next-building" aria-label="Next hostel">→</button>
+              <div class="building-menu hidden" id="building-menu" role="listbox" aria-label="IIT Hyderabad hostels"></div>
+            </div>
+
+            <div class="segmented view-switch" role="group" aria-label="Map view">
+              <!-- Deferred, not removed: restore these when campus/site exploration is needed. -->
+              <button class="seg-btn hidden" data-view="site"><span>◇</span> Site view</button>
+              <button class="seg-btn hidden" data-view="map"><span>⌖</span> Campus map</button>
+              <button class="seg-btn active" data-view="3d"><span>◈</span> 3D viewer</button>
+              <button class="seg-btn" data-view="floor"><span>▦</span> Floor plan</button>
+            </div>
+
+            <div class="toolbar-actions">
+              <button class="chip" id="friend-mode-toggle"><span>♙</span> Friends map</button>
+              <button class="btn btn--ghost" id="legend-toggle">Map legend <span>⌄</span></button>
+            </div>
+          </div>
+
+          <div class="legend" id="legend">
+            <span><i class="occupied"></i> Occupied</span>
+            <span><i class="empty"></i> Vacant</span>
+            <span><i class="intern"></i> Reserved for interns</span>
+            <span><i class="mtech"></i> M.Tech</span>
+            <span><i class="graduate"></i> Graduate</span>
+          </div>
+
+          <div class="visual-stage" id="visual-stage">
+            <div class="map-view hidden" id="map-view">
+              <iframe id="campus-map" title="Google map of IIT Hyderabad campus" src="https://www.google.com/maps?q=IIT%20Hyderabad%2C%20Kandi%2C%20Telangana&z=16&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+              <div class="map-title"><span>IIT HYDERABAD · KANDI</span><small>Campus location on Google Maps</small></div>
+              <div class="map-card">
+                <p>HOSTEL VISUALIZER</p>
+                <h3>Student housing precinct</h3>
+                <span>Explore the campus, then enter the hostel model.</span>
+                <button class="btn btn--primary btn--block" id="map-open-viewer">Open 3D explorer <b>→</b></button>
+                <small>Normal Google Maps embed · no API key required.</small>
+              </div>
+            </div>
+
+            <div class="three-view" id="three-view">
+              <canvas id="hostel-3d-canvas" aria-label="Interactive 3D IIT Hyderabad hostel building"></canvas>
+              <div class="three-title">
+                <span id="three-building-label">BHABHA · REFERENCE-INFORMED 3D MODEL</span>
+                <small id="three-building-meta">Paired leaf clusters · 6 residential levels</small>
+              </div>
+              <div class="three-readout" id="three-readout">
+                <strong>Orbit the building</strong><span>Drag to rotate · scroll to zoom · click a room</span>
+              </div>
+              <div class="friend-city-hud hidden" id="friend-city-hud">
+                <span>FRIENDS MAP</span>
+                <strong><b id="friend-city-count">0</b> people across <b id="friend-city-hostels">0</b> hostels</strong>
+                <small>Only selected friends’ rooms are lit. Click a lit hostel to enter it.</small>
+                <ul id="friend-city-list"></ul>
+              </div>
+              <div class="three-floor-control">
+                <span>ISOLATE FLOOR</span>
+                <button data-viewer-floor="all" class="active">ALL</button>
+                <button data-viewer-floor="5">06</button><button data-viewer-floor="4">05</button>
+                <button data-viewer-floor="3">04</button><button data-viewer-floor="2">03</button>
+                <button data-viewer-floor="1">02</button><button data-viewer-floor="0">01</button>
+              </div>
+              <div class="three-credit" id="three-credit">Based on the connected leaf-cluster, horizontal-band and rust-red louvre language of the IITH student housing reference.</div>
+            </div>
+
+            <div class="site-view hidden" id="site-view">
+              <img class="facade-reference" src="./assets/iith-hostel-facade.png" alt="IIT Hyderabad student housing facade" />
+              <div class="facade-shade"></div>
+              <div class="site-title"><span>HOSTEL PRECINCT</span><small>Tap a residence to enter</small></div>
+              <div class="north">N<span>↑</span></div>
+              <button class="facade-hotspot" id="facade-hotspot">
+                <span>BHABHA</span><strong id="facade-hotspot-name">Bhabha</strong><small>Enter floor explorer →</small>
+              </button>
+              <div class="site-card">
+                <div class="site-card-cap">CURRENTLY VIEWING</div>
+                <strong id="site-card-building">Bhabha</strong>
+                <span>6 floors · 144 rooms</span>
+                <button class="btn btn--primary btn--block" id="enter-building">Enter building <b>→</b></button>
+              </div>
+            </div>
+
+            <div class="floor-view hidden" id="floor-view">
+              <aside class="floor-rail">
+                <span>FLOOR</span>
+                <div id="floor-buttons"></div>
+                <button class="ground-floor" data-floor="0">G<span>Ground</span></button>
+              </aside>
+              <div class="floor-canvas">
+                <div class="floor-heading">
+                  <div>
+                    <p id="floor-label">LEVEL 03 · TYPICAL RESIDENTIAL PLAN</p>
+                    <h2 id="floor-title">Third floor <span>·</span> Bhabha</h2>
+                  </div>
+                  <button class="icon-btn" id="zoom-button" aria-label="Zoom map">⌗</button>
+                </div>
+                <div class="plan-wrap" id="plan-wrap">
+                  <svg class="floor-plan" viewBox="0 0 1748 1252" role="img" aria-label="IIT Hyderabad hostel typical floor plan with selectable rooms">
+                    <image class="blueprint" href="./assets/iith-typical-floor-plan.png" x="0" y="0" width="1748" height="1252" />
+                    <g class="pod-plan-outline" aria-hidden="true">
+                      <rect x="190" y="365" width="330" height="255" rx="24" />
+                      <rect x="700" y="365" width="330" height="255" rx="24" />
+                      <rect x="1210" y="365" width="330" height="255" rx="24" />
+                      <rect class="pod-corridor" x="520" y="470" width="180" height="46" rx="15" />
+                      <rect class="pod-corridor" x="1030" y="470" width="180" height="46" rx="15" />
+                      <text x="355" y="405">NORTH POD</text>
+                      <text x="865" y="405">CENTRAL POD</text>
+                      <text x="1375" y="405">SOUTH POD</text>
+                    </g>
+                    <g id="room-layer"></g>
+                  </svg>
+                  <div class="plan-tip"><span>⌁</span> IIT-H typical plan · select any highlighted room</div>
+                </div>
+                <div class="plan-key">
+                  <span><i></i> Original architectural drawing</span>
+                  <span><i></i> Highlighted room inventory</span>
+                </div>
+              </div>
+              <aside class="room-panel" id="room-panel">
+                <div class="panel-empty">
+                  <span class="empty-icon">⌁</span>
+                  <h3>Choose a room</h3>
+                  <p>Hover for a quick preview, then click a room to see who lives there.</p>
+                </div>
+                <div class="panel-detail hidden" id="panel-detail"></div>
+              </aside>
+            </div>
+          </div>
+
+          <div class="stats-row">
+            <div><span class="stat-icon amber">⌂</span><p><strong id="rooms-count">144</strong><small id="rooms-caption">rooms in this building</small></p></div>
+            <div><span class="stat-icon green">◉</span><p><strong id="available-count">18</strong><small>currently vacant</small></p></div>
+            <div><span class="stat-icon purple">♙</span><p><strong id="friends-count">0</strong><small id="friends-caption">selected friends</small></p></div>
+            <div><span class="stat-icon blue">↯</span><p><strong>92%</strong><small>occupancy this week</small></p></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop hidden" id="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
+      <section class="modal-card">
+        <button class="icon-btn modal-close" data-close-modal aria-label="Close">×</button>
+        <p class="modal-kicker">YOUR NIVAS PROFILE</p>
+        <h2 id="profile-modal-title">Register your stay</h2>
+        <p class="modal-copy">Saved privately in this browser for this prototype. A live version should use institute sign-in and consented data sharing.</p>
+        <form id="profile-form" class="field-grid">
+          <label>Full name<input name="name" required maxlength="64" placeholder="e.g. Arjun Chandra" autocomplete="name" /></label>
+          <label>Roll number<input name="roll" required maxlength="24" placeholder="e.g. CS24B1001" /></label>
+          <label>Hostel<select name="hostel" required></select></label>
+          <label>Room number<input name="room" required maxlength="16" placeholder="e.g. 3-312" /></label>
+          <button class="btn btn--primary" type="submit">Save my stay <b>→</b></button>
+        </form>
+      </section>
+    </div>
+
+    <div class="modal-backdrop hidden" id="friends-modal" role="dialog" aria-modal="true" aria-labelledby="friends-modal-title">
+      <section class="modal-card modal-card--wide">
+        <button class="icon-btn modal-close" data-close-modal aria-label="Close">×</button>
+        <div class="modal-heading">
+          <div><p class="modal-kicker">YOUR CONNECTIONS</p><h2 id="friends-modal-title">Choose up to 8 friends</h2></div>
+          <strong class="pill pill--pending" id="friend-selection-count">0 / 8 selected</strong>
+        </div>
+        <p class="modal-copy">Friends mode lights their exact rooms across the hostel city. M.Tech and PhD residents can receive a local swap / shift request.</p>
+        <div class="friend-directory" id="friend-directory"></div>
+        <div class="modal-footer">
+          <button class="btn btn--secondary" data-close-modal>Done</button>
+          <button class="btn btn--primary" id="friends-map-from-list">Open friends map <b>→</b></button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop hidden" id="requests-modal" role="dialog" aria-modal="true" aria-labelledby="requests-modal-title">
+      <section class="modal-card modal-card--wide">
+        <button class="icon-btn modal-close" data-close-modal aria-label="Close">×</button>
+        <div class="modal-heading">
+          <div><p class="modal-kicker">ROOM SWAPS</p><h2 id="requests-modal-title">Requests</h2></div>
+          <strong class="pill pill--pending" id="request-summary">0 pending</strong>
+        </div>
+        <div class="segmented request-tabs" role="group" aria-label="Request direction">
+          <button class="seg-btn active" data-request-tab="received">Received</button>
+          <button class="seg-btn" data-request-tab="sent">Sent</button>
+        </div>
+        <div class="request-list" id="request-list"></div>
+        <div class="notice">
+          <b>⌁</b>
+          <span>Requests are stored on this device only — nothing is delivered to the other student yet. Wiring real delivery needs the backend described in <code>docs/PROGRESS.md</code>.</span>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop hidden" id="request-modal" role="dialog" aria-modal="true" aria-labelledby="request-modal-title">
+      <section class="modal-card">
+        <button class="icon-btn modal-close" data-close-modal aria-label="Close">×</button>
+        <p class="modal-kicker">ROOM REQUEST</p>
+        <h2 id="request-modal-title">Request a swap / shift</h2>
+        <p class="modal-copy" id="request-recipient"></p>
+        <form id="request-form" class="field-grid">
+          <label>Message<textarea name="message" id="request-message" required maxlength="500"></textarea></label>
+          <button class="btn btn--primary" type="submit">Save request <b>→</b></button>
+        </form>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="./app.js?v=2"></script>
+    <script type="module" src="./viewer3d.js?v=2"></script>
+  </body>
+</html>
