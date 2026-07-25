@@ -355,8 +355,20 @@ function setBuilding(name, roomStatuses = {}) {
 function setFloor(value) {
   isolatedFloor = value === 'all' ? null : Number(value);
   residential.floorGroups.forEach((floorGroup, index) => { floorGroup.visible = isolatedFloor === null || index === isolatedFloor; });
-  document.querySelectorAll('[data-viewer-floor]').forEach(button => button.classList.toggle('active', button.dataset.viewerFloor === String(value)));
   readout.innerHTML = isolatedFloor === null ? `<strong>All residential levels</strong><span>Drag to rotate · scroll to zoom · click a room</span>` : `<strong>Floor ${String(isolatedFloor + 1).padStart(2, '0')} isolated</strong><span>Click a coloured room to inspect its status</span>`;
+}
+const DEFAULT_CAMERA = { position: [31, 27, 35], target: [0, 10.5, 0] };
+function zoomIn() { camera.position.lerp(controls.target, .18); controls.update(); }
+function zoomOut() {
+  const outward = camera.position.clone().sub(controls.target).multiplyScalar(1.22).add(controls.target);
+  const distance = outward.distanceTo(controls.target);
+  if (distance <= controls.maxDistance) camera.position.copy(outward);
+  controls.update();
+}
+function resetView() {
+  camera.position.set(...DEFAULT_CAMERA.position);
+  controls.target.set(...DEFAULT_CAMERA.target);
+  controls.update();
 }
 window.addEventListener('nivas:building-change', event => {
   const detail = event.detail;
@@ -534,13 +546,17 @@ canvas.addEventListener('pointerdown', event => {
   const info = hit.object.userData; const labels = { unlisted: 'Unlisted', occupied: 'Registered', open: 'Open to swap', match: 'Match for you' };
   readout.innerHTML = `<strong>${info.hostel} · Room ${String(info.floor + 1).padStart(2, '0')}-${info.room}</strong><span>${labels[info.status]} · click another room to explore</span>`;
   activeRoomMeshes.forEach(mesh => mesh.material.emissiveIntensity = mesh === hit.object ? .9 : .17);
+  if (info.visualRoomId) window.dispatchEvent(new CustomEvent('nivas:room-click', { detail: { id: info.visualRoomId } }));
 });
 canvas.addEventListener('pointermove', event => { const rect = canvas.getBoundingClientRect(); pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1; pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1; raycaster.setFromCamera(pointer, camera); const targets = cityMode ? cityPickMeshes : activeRoomMeshes.filter(mesh => mesh.visible); canvas.style.cursor = raycaster.intersectObjects(targets, false).length ? 'pointer' : 'grab'; });
 
-document.querySelectorAll('[data-viewer-floor]').forEach(button => button.addEventListener('click', () => setFloor(button.dataset.viewerFloor)));
-
 function resize() { const { width, height } = canvas.getBoundingClientRect(); if (!width || !height) return; camera.aspect = width / height; camera.updateProjectionMatrix(); renderer.setSize(width, height, false); }
 function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
-window.addEventListener('resize', resize); resize(); animate();
-window.nivasViewer = { resize, setFriendMode };
+/* The stage is flex-sized now, so the canvas can change size without the window
+   doing so (column stacking, rail width, view switching). Observe the canvas
+   itself; setSize's third argument is false, so this can't feed back into a loop. */
+window.addEventListener('resize', resize);
+new ResizeObserver(resize).observe(canvas);
+resize(); animate();
+window.nivasViewer = { resize, setFriendMode, setFloor, zoomIn, zoomOut, resetView };
 window.dispatchEvent(new Event('nivas:viewer-ready'));

@@ -256,26 +256,27 @@ function openProfile() {
 
 /* ── Room views ─────────────────────────────────────────────────────────── */
 
-function renderFloors() {
-  const holder = document.getElementById("floor-buttons");
-  holder.innerHTML = "";
-  Array.from({ length: FLOOR_COUNT }, (_, index) => FLOOR_COUNT - index).forEach(floor => {
-    const button = document.createElement("button");
-    button.textContent = String(floor).padStart(2, "0");
-    button.dataset.floor = floor;
-    if (floor === activeFloor) button.classList.add("active");
-    button.addEventListener("click", () => {
-      activeFloor = floor;
-      renderFloors(); renderRooms(); renderFloorHeading(); resetPanel();
-    });
-    holder.appendChild(button);
-  });
+let activeView = "3d";
+let show3DAll = true;
+
+function renderFloorSelect() {
+  const select = document.getElementById("floor-select");
+  const options = [];
+  if (activeView === "3d") options.push(`<option value="all">All floors</option>`);
+  for (let floor = FLOOR_COUNT; floor >= 1; floor--) options.push(`<option value="${floor}">Floor ${floor}</option>`);
+  select.innerHTML = options.join("");
+  select.value = activeView === "3d" && show3DAll ? "all" : String(activeFloor);
 }
-function renderFloorHeading() {
-  const names = ["", "First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth"];
-  const layout = "FOUR-POD RESIDENTIAL PLAN";
-  document.getElementById("floor-label").textContent = `LEVEL ${String(activeFloor).padStart(2, "0")} · ${layout}`;
-  document.getElementById("floor-title").innerHTML = `${names[activeFloor]} floor <span>·</span> ${escapeHtml(currentBuilding())}`;
+function applyFloorSelection(value) {
+  if (value === "all") {
+    show3DAll = true;
+    if (activeView === "3d") window.nivasViewer?.setFloor("all");
+    return;
+  }
+  show3DAll = false;
+  activeFloor = Number(value);
+  if (activeView === "3d") window.nivasViewer?.setFloor(String(activeFloor - 1));
+  else { renderRooms(); resetPanel(); }
 }
 function renderRooms() {
   const layer = document.getElementById("room-layer");
@@ -289,7 +290,7 @@ function renderRooms() {
     room.setAttribute("class", `room ${status}`);
     room.dataset.id = id;
     room.addEventListener("mouseenter", () => showToast(`Room ${id} · ${STATUS_LABELS[status]}`));
-    room.addEventListener("click", () => openRoom(id, status, index, room));
+    room.addEventListener("click", () => openRoom(id, room));
     layer.appendChild(room);
   });
   updateSummary();
@@ -299,9 +300,10 @@ function resetPanel() {
   document.getElementById("panel-detail").classList.add("hidden");
   document.querySelectorAll(".selected-room").forEach(room => room.classList.remove("selected-room"));
 }
-function openRoom(id, status, index, element) {
+function openRoom(id, element) {
   document.querySelectorAll(".selected-room").forEach(room => room.classList.remove("selected-room"));
-  element.classList.add("selected-room");
+  element?.classList.add("selected-room");
+  const status = statusAt(id);
   document.querySelector(".panel-empty").classList.add("hidden");
   const detail = document.getElementById("panel-detail");
   const listing = listingAt(currentBuilding(), id);
@@ -339,8 +341,22 @@ function updateSummary() {
   document.getElementById("rooms-count").textContent = here.length;
   document.getElementById("open-swap-count").textContent = openHere.length;
   document.getElementById("match-count").textContent = matches.length;
-  document.getElementById("summary-open").textContent = openHere.length;
-  document.getElementById("summary-open-copy").textContent = `rooms open to swap in ${currentBuilding()}`;
+  updateInsights();
+}
+function topDestination(hostel) {
+  const counts = {};
+  activeListings().filter(listing => listing.hostel === hostel && listing.willingToMove)
+    .forEach(listing => listing.preferences.forEach(preference => { counts[preference.hostel] = (counts[preference.hostel] || 0) + 1; }));
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  return top ? { hostel: top[0], count: top[1] } : null;
+}
+function updateInsights() {
+  const hostel = currentBuilding();
+  const seekingHere = activeListings().filter(listing => listing.preferences.some(preference => preference.hostel === hostel));
+  document.getElementById("insight-want-value").textContent = `${hostel} ${seekingHere.length}`;
+  const top = topDestination(hostel);
+  document.getElementById("insight-wanted-label").textContent = `${hostel} residents want`;
+  document.getElementById("insight-wanted-value").textContent = top ? `${top.hostel} ${top.count}` : "No data yet";
 }
 
 function openActivity(hostel = currentBuilding(), ownHostel = ownListing()?.hostel) {
@@ -367,13 +383,12 @@ function setBuilding(index) {
   document.getElementById("three-building-label").textContent = `${name.toUpperCase()} · ${BUILDING_PROFILE.architecture}`;
   document.getElementById("three-building-meta").textContent = BUILDING_PROFILE.meta;
   document.getElementById("three-credit").textContent = BUILDING_PROFILE.credit;
-  document.getElementById("rooms-caption").textContent = BUILDING_PROFILE.roomCaption;
   document.getElementById("facade-hotspot-name").textContent = name;
   document.querySelectorAll(".building-option").forEach(option => {
     const selected = Number(option.dataset.buildingIndex) === buildingIndex;
     option.classList.toggle("selected", selected); option.setAttribute("aria-selected", String(selected));
   });
-  renderRooms(); renderFloorHeading(); resetPanel(); updateViewer();
+  renderRooms(); resetPanel(); updateViewer();
 }
 function renderBuildingMenu() {
   const menu = document.getElementById("building-menu");
@@ -385,6 +400,7 @@ function closeBuildingMenu() {
   document.getElementById("building-choice").setAttribute("aria-expanded", "false");
 }
 function selectView(view) {
+  activeView = view;
   document.querySelectorAll("[data-view]").forEach(button => button.classList.toggle("active", button.dataset.view === view));
   document.getElementById("site-view").classList.toggle("hidden", view !== "site");
   document.getElementById("floor-view").classList.toggle("hidden", view !== "floor");
@@ -392,6 +408,8 @@ function selectView(view) {
   document.getElementById("map-view").classList.toggle("hidden", view !== "map");
   document.getElementById("visual-stage").classList.toggle("hidden", view === "3d");
   document.querySelector(".hero-model").classList.toggle("hidden", view !== "3d");
+  renderFloorSelect();
+  if (view === "floor") { renderRooms(); resetPanel(); }
   if (view === "3d") requestAnimationFrame(() => window.nivasViewer?.resize());
 }
 
@@ -430,12 +448,22 @@ function bindEvents() {
     const menu = document.getElementById("building-menu"); const opening = menu.classList.contains("hidden");
     menu.classList.toggle("hidden", !opening); document.getElementById("building-choice").setAttribute("aria-expanded", String(opening));
   });
-  document.getElementById("swap-activity").addEventListener("click", openActivity);
+  document.getElementById("insight-want").addEventListener("click", () => openActivity());
+  document.getElementById("insight-wanted").addEventListener("click", () => openActivity());
   document.getElementById("enter-building").addEventListener("click", () => selectView("floor"));
   document.getElementById("facade-hotspot").addEventListener("click", () => selectView("floor"));
   document.getElementById("map-open-viewer").addEventListener("click", () => selectView("3d"));
   document.querySelectorAll("[data-view]").forEach(button => button.addEventListener("click", () => selectView(button.dataset.view)));
-  document.getElementById("zoom-button").addEventListener("click", () => document.getElementById("plan-wrap").classList.toggle("zoomed"));
+  document.getElementById("floor-select").addEventListener("change", event => applyFloorSelection(event.target.value));
+  document.getElementById("zoom-in").addEventListener("click", () => {
+    if (activeView === "3d") window.nivasViewer?.zoomIn(); else document.getElementById("plan-wrap").classList.add("zoomed");
+  });
+  document.getElementById("zoom-out").addEventListener("click", () => {
+    if (activeView === "3d") window.nivasViewer?.zoomOut(); else document.getElementById("plan-wrap").classList.remove("zoomed");
+  });
+  document.getElementById("zoom-reset").addEventListener("click", () => {
+    if (activeView === "3d") window.nivasViewer?.resetView(); else document.getElementById("plan-wrap").classList.remove("zoomed");
+  });
   document.addEventListener("click", event => {
     if (!document.querySelector(".building-picker").contains(event.target)) closeBuildingMenu();
   });
@@ -443,11 +471,12 @@ function bindEvents() {
     if (event.key === "Escape") closeAllModals();
   });
   window.addEventListener("nivas:viewer-ready", updateViewer);
+  window.addEventListener("nivas:room-click", event => { if (event.detail?.id) openRoom(event.detail.id); });
 }
 
 async function boot() {
   db = await DataSource.load();
-  bindEvents(); renderBuildingMenu(); renderFloors(); renderFloorHeading(); renderProfile(); setBuilding(buildingIndex);
+  bindEvents(); renderBuildingMenu(); renderProfile(); setBuilding(buildingIndex);
   selectView("3d");
   if (LISTINGS_ENDPOINT) setInterval(async () => { db = await DataSource.load(); renderRooms(); updateViewer(); }, 15000);
 }

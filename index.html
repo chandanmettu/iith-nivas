@@ -9,11 +9,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
     <!-- Bump ?v= on every CSS/JS change — shared hosting CDNs serve stale assets otherwise. -->
-    <link rel="stylesheet" href="./styles.css?v=21" />
+    <link rel="stylesheet" href="./styles.css?v=23" />
   </head>
   <body>
+    <!-- Layout: top navbar, a plain-language intro line, then one explorer card
+         with the artifact full-bleed and small floating context cards over it
+         (key, zoom, room detail) — nothing boxes the artifact in a column. -->
     <div class="app-shell">
-      <aside class="sidebar">
+      <header class="topbar">
         <a class="brand" href="#" aria-label="Nivas home">
           <span class="brand-mark"><i></i><i></i><i></i></span>
           <span>NIVAS<small>IIT HYDERABAD</small></span>
@@ -24,36 +27,21 @@
           <button class="nav-item" data-tab="listing"><span class="nav-icon">⇄</span> My swap listing</button>
         </nav>
 
-        <div class="sidebar-bottom sidebar-stats">
-          <div class="sidebar-stat"><span class="stat-icon amber">⌂</span><p><strong id="rooms-count">0</strong><small id="rooms-caption">Rooms listed</small></p></div>
-          <div class="sidebar-stat"><span class="stat-icon green">⇄</span><p><strong id="open-swap-count">0</strong><small>open to swap here</small></p></div>
-          <div class="sidebar-stat"><span class="stat-icon blue">✦</span><p><strong id="match-count">0</strong><small>matches for you</small></p></div>
+        <button class="btn btn--primary topbar-cta" id="hero-create-listing">Create my swap listing <b>→</b></button>
+      </header>
+
+      <main class="page">
+        <div class="page-intro">
+          <h1 id="page-title">Find the room swap that fits<em>.</em></h1>
         </div>
-      </aside>
 
-      <main class="main-content">
-        <section class="app-panel" aria-labelledby="page-title">
-          <div class="hero">
-            <div>
-              <p class="eyebrow">SAMPLE SWAP LISTINGS · JULY 2026</p>
-              <h1 id="page-title">List your room. <em>Find your swap.</em></h1>
-              <p class="hero-copy">See student-posted room-swap listings by hostel, floor, and pod.</p>
-            </div>
-            <div class="hero-actions">
-              <button class="btn btn--primary hero-cta" id="hero-create-listing">Create my swap listing <b>→</b></button>
-              <div class="live-summary">
-                <p class="summary-label"><span class="pulse"></span><span>SWAP ACTIVITY</span></p>
-                <strong id="summary-open">0</strong><small id="summary-open-copy">rooms open to swap in Bhabha</small>
-              </div>
-            </div>
-          </div>
-
-          <div class="toolbar hero-toolbar" aria-label="Hostel explorer controls">
+        <section class="explorer-card" aria-label="Hostel explorer">
+          <div class="toolbar" aria-label="Hostel explorer controls">
             <div class="building-picker" role="group" aria-label="Building selector">
               <button class="picker-arrow" id="prev-building" aria-label="Previous hostel">←</button>
               <button class="building-choice" id="building-choice" aria-expanded="false" aria-haspopup="listbox" aria-controls="building-menu">
                 <span class="building-dot"></span>
-                <span><small id="building-count-label">SELECTED HOSTEL</small><strong id="building-name">Bhabha</strong></span>
+                <strong id="building-name">Bhabha</strong>
                 <b>⌄</b>
               </button>
               <button class="picker-arrow" id="next-building" aria-label="Next hostel">→</button>
@@ -64,34 +52,18 @@
               <!-- Deferred, not removed: restore these when campus/site exploration is needed. -->
               <button class="seg-btn hidden" data-view="site"><span>◇</span> Site view</button>
               <button class="seg-btn hidden" data-view="map"><span>⌖</span> Campus map</button>
-              <button class="seg-btn active" data-view="3d"><span>◈</span> 3D viewer</button>
+              <button class="seg-btn active" data-view="3d"><span>◈</span> 3D building</button>
               <button class="seg-btn" data-view="floor"><span>▦</span> Floor plan</button>
             </div>
 
-            <div class="toolbar-actions">
-              <button class="btn btn--secondary" id="swap-activity">Swap activity</button>
-            </div>
-          </div>
-
-          <div class="legend" id="legend">
-            <p>ROOM STATUS</p>
-            <span><i class="unlisted"></i> Unlisted</span>
-            <span><i class="occupied"></i> Registered</span>
-            <span><i class="open"></i> Open to swap</span>
-            <span><i class="match"></i> Match for you</span>
+            <label class="floor-select-wrap">
+              <span>⌂</span>
+              <select id="floor-select" aria-label="Floor"></select>
+            </label>
           </div>
 
           <div class="panel-stage">
             <div class="hero-model">
-              <aside class="floor-rail floor-rail--dark">
-                <span>FLOOR</span>
-                <div class="floor-rail-buttons">
-                  <button data-viewer-floor="8">09</button><button data-viewer-floor="7">08</button><button data-viewer-floor="6">07</button>
-                  <button data-viewer-floor="5">06</button><button data-viewer-floor="4">05</button><button data-viewer-floor="3">04</button>
-                  <button data-viewer-floor="2">03</button><button data-viewer-floor="1">02</button><button data-viewer-floor="0">01</button>
-                </div>
-                <button class="all-floors active" data-viewer-floor="all">ALL</button>
-              </aside>
               <div class="three-view" id="three-view">
                 <canvas id="hostel-3d-canvas" aria-label="Interactive 3D IIT Hyderabad hostel building"></canvas>
                 <div class="three-title">
@@ -135,19 +107,7 @@
               </div>
 
               <div class="floor-view hidden" id="floor-view">
-                <aside class="floor-rail">
-                  <span>FLOOR</span>
-                  <div id="floor-buttons"></div>
-                  <button class="ground-floor" data-floor="0">G<span>Ground</span></button>
-                </aside>
                 <div class="floor-canvas">
-                  <div class="floor-heading">
-                    <div>
-                    <p id="floor-label">LEVEL 09 · FOUR-POD RESIDENTIAL PLAN</p>
-                    <h2 id="floor-title">Ninth floor <span>·</span> Bhabha</h2>
-                    </div>
-                    <button class="icon-btn" id="zoom-button" aria-label="Zoom map">⌗</button>
-                  </div>
                   <div class="plan-wrap" id="plan-wrap">
                     <svg class="floor-plan" viewBox="0 0 1748 1252" role="img" aria-label="IIT Hyderabad hostel typical floor plan with selectable rooms">
                       <image class="blueprint" href="./assets/iith-typical-floor-plan.png" x="0" y="0" width="1748" height="1252" />
@@ -163,21 +123,58 @@
                       </g>
                       <g id="room-layer"></g>
                     </svg>
-                    <div class="plan-tip"><span>⌁</span> IIT-H typical plan · select any highlighted room</div>
                   </div>
                 </div>
-                <aside class="room-panel" id="room-panel">
-                  <div class="panel-empty">
-                    <span class="empty-icon">⌁</span>
-                    <h3>Choose a room</h3>
-                    <p>Click a room to see its student-submitted swap status.</p>
-                  </div>
-                  <div class="panel-detail hidden" id="panel-detail"></div>
-                </aside>
               </div>
             </div>
+
+            <!-- Floating context cards — shared by every view in .panel-stage. -->
+            <div class="key-card" id="legend">
+              <p>Key</p>
+              <span><i class="unlisted"></i> Unlisted</span>
+              <span><i class="occupied"></i> Registered</span>
+              <span><i class="open"></i> Open to swap</span>
+              <span><i class="match"></i> Match for you</span>
+            </div>
+
+            <div class="zoom-controls" role="group" aria-label="Zoom">
+              <button id="zoom-in" aria-label="Zoom in">+</button>
+              <button id="zoom-out" aria-label="Zoom out">−</button>
+              <button id="zoom-reset" aria-label="Reset view">⟲</button>
+            </div>
+
+            <aside class="room-detail-card" id="room-panel">
+              <div class="panel-empty">
+                <span class="empty-icon">⌁</span>
+                <h3>Choose a room</h3>
+                <p>Click a room to see its student-submitted swap status.</p>
+              </div>
+              <div class="panel-detail hidden" id="panel-detail"></div>
+              <div class="room-detail-stats">
+                <div><strong id="rooms-count">0</strong><small>listed</small></div>
+                <div><strong id="open-swap-count">0</strong><small>open</small></div>
+                <div><strong id="match-count">0</strong><small>matches</small></div>
+              </div>
+            </aside>
           </div>
         </section>
+
+        <div class="insight-row">
+          <button class="insight-tile insight-tile--amber" id="insight-want">
+            <span class="insight-icon">↗</span>
+            <span class="insight-copy"><small>Want to move to</small><strong id="insight-want-value">Bhabha 0</strong></span>
+            <span class="insight-chevron">›</span>
+          </button>
+          <button class="insight-tile insight-tile--blue" id="insight-wanted">
+            <span class="insight-icon">⇄</span>
+            <span class="insight-copy"><small id="insight-wanted-label">Bhabha residents want</small><strong id="insight-wanted-value">— 0</strong></span>
+            <span class="insight-chevron">›</span>
+          </button>
+          <div class="privacy-tile">
+            <span class="privacy-icon">⛨</span>
+            <span>Student-submitted listings · not official allocation data</span>
+          </div>
+        </div>
       </main>
     </div>
 
@@ -223,7 +220,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./app.js?v=14"></script>
-    <script type="module" src="./viewer3d.js?v=7"></script>
+    <script src="./app.js?v=16"></script>
+    <script type="module" src="./viewer3d.js?v=9"></script>
   </body>
 </html>

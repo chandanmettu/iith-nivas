@@ -125,40 +125,72 @@ Every clickable control in the app is one of these. Do not invent a new button.
 
 ## Layout
 
-- Sidebar 248px fixed → 72px icon rail under 980px → hidden under 690px.
-  Holds the primary nav and the three activity stat tiles
-  (`.sidebar-stats`/`.sidebar-stat`) — there is no listing-CTA card in the
-  sidebar; that action lives once, in the hero (`#hero-create-listing`) and
-  once in the nav ("My swap listing" tab). Don't add a third entry point.
-- **The entire explorer is one `.app-panel` shell** — pitch strip / toolbar /
-  legend / stage (500px), divided only by hairline borders. Do not give any
-  of these sections its own margin, border, radius, or shadow; that produces
-  a fragmented "stack of floating cards" look, which is exactly what this
-  structure replaced (see PROGRESS.md). One card, one shadow, one set of
-  rounded corners. The activity stats live in the sidebar, not this panel.
-- `#legend` sits as its own bar between the toolbar and `.panel-stage`,
-  **shared by both the 3D and floor-plan views** — it is not nested inside
-  `.hero-model` any more. If you add a new view, it appears above that too.
-- Inside the panel, `.panel-stage` holds `.hero-model` (3D) and
-  `#visual-stage` (site/floor/map) as absolutely-positioned siblings at a
-  fixed height — they're mutually exclusive via `.hidden`, so stacking them
-  means switching views never reflows the panel around them.
+**A normal scrolling page, one full-bleed explorer card, floating context
+cards over the stage — no side rail.** This replaced a two-column
+(artifact + context rail) layout that itself replaced a sidebar layout,
+in consecutive sessions; see PROGRESS.md if you're tempted to bring either
+back. `.app-shell` is a plain flex column (`min-height: 100dvh`, page
+scrolls); `.topbar` is `position: sticky; top: 0`.
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│ .topbar   brand · nav · Create-listing CTA                     │  60px, sticky
+├────────────────────────────────────────────────────────────────┤
+│ .page-intro   "Find the room swap that fits."                  │
+│                                                                  │
+│  .explorer-card ───────────────────────────────────────────┐   │
+│  │ .toolbar  picker · view switch · floor <select>          │   │  64px
+│  ├───────────────────────────────────────────────────────────┤   │
+│  │ .panel-stage  clamp(440px, 58vh, 600px)                   │   │
+│  │  .key-card (↖)         .room-detail-card (↗)              │   │
+│  │  .zoom-controls (↙)    with .room-detail-stats footer      │   │
+│  │  (.hero-model 3D / #visual-stage floor+map, full-bleed)   │   │
+│  └───────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  .insight-row   2 clickable tiles + 1 privacy note              │
+└────────────────────────────────────────────────────────────────┘
+```
+
+- **`.panel-stage` is the artifact, full width, no side column competing for
+  it.** `.hero-model` (3D) and `#visual-stage` (site/floor/map) are
+  absolutely-positioned siblings inside it — mutually exclusive via
+  `.hidden`, so switching views never reflows anything. Give it a fixed-ish
+  height (`clamp(...)`, currently 440–600px) rather than growing with the
+  viewport — the floating cards need a stable frame to anchor to.
+- **`.key-card`, `.zoom-controls`, `.room-detail-card` are absolutely
+  positioned inside `.panel-stage`**, not in a side rail. All three are white
+  cards with the same border/radius/shadow, so they read consistently over
+  both the dark 3D scene and the light floor-plan background. Don't move any
+  of them back into a persistent column — that's the exact thing this
+  structure replaced twice already.
+- **`#room-panel` (the room-detail card) is shared by both views.** Clicking
+  a room in the floor plan *or* the 3D viewer populates the same card —
+  `viewer3d.js` dispatches `nivas:room-click` on a 3D click, `app.js`
+  handles it the same way as a floor-plan click. Don't let one view grow its
+  own separate detail UI again.
+- **Floor selection is one `<select>` in the toolbar** (`#floor-select`), not
+  a rail of buttons. It lists "All floors" only when the 3D view is active
+  (floor-plan always needs one specific floor). Don't reintroduce a
+  vertical floor-button rail — that pattern existed in two different forms
+  (light and dark) in earlier sessions and both were replaced by this.
+- **No sidebar.** Nav lives in `.topbar` alongside the brand and the single
+  primary CTA (`#hero-create-listing`). With the "My swap listing" nav tab
+  that's two entry points to the listing form — don't add a third.
+- The on-canvas `.three-title`/`.three-readout` text overlays are hidden
+  (`display: none`) wherever they'd sit under `.key-card` — their job moved
+  to the toolbar (hostel name) and the room-detail card (click feedback).
 - **The 3D viewer shows one hostel at a time.** A multi-hostel side-by-side
   compare mode was tried and reverted — same shared camera meant orbiting
   moved all buildings together, and it didn't fix the real lag (3x the
-  detailed geometry rendering regardless of camera setup). See PROGRESS.md
-  if this gets revisited; don't re-add it without solving the lag first.
-- **Both the 3D and floor-plan views use the same left floor-rail pattern**
-  (`.floor-rail` / `.floor-rail--dark`) — vertical stack of floor buttons,
-  same position, same interaction. Don't let one view's floor control drift
-  back to a different position/shape than the other's.
-- There is no search input — it was removed deliberately, twice (added back
-  once when the topbar was cleaned up, then removed again on request). Hostel
+  detailed geometry rendering regardless of camera setup). Don't re-add it
+  without solving the lag first.
+- There is no search input — removed deliberately more than once. Hostel
   selection is the picker dropdown only.
-- Breakpoints: **980px** (collapse sidebar to icon rail, stack the pitch
-  strip, drop the room panel) and **690px** (mobile — hide sidebar entirely,
-  wrap the toolbar, stack everything). Note the activity stats are only
-  visible when the sidebar is — they disappear below 690px along with nav.
+- Breakpoints: **1240px** (card goes full width, smaller headline, room-
+  detail card narrows), **980px** (insight tiles go 2-up, floating cards
+  shrink their padding), **690px** (topbar wraps, toolbar wraps, stage
+  420px, key card collapses to just the first swatch, room-detail card
+  narrows further).
 
 ## Assets
 

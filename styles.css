@@ -348,27 +348,39 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   box-shadow: var(--e-1);
 }
 
-/* ── 04 Sidebar ──────────────────────────────────────────────────────────── */
+/* ── 04 Top header ───────────────────────────────────────────────────────── */
 
-.app-shell { min-height: 100vh; display: flex; }
-
-.sidebar {
-  position: fixed;
-  inset: 0 auto 0 0;
-  z-index: 5;
-  width: 248px;
+/* A normal scrolling page: sticky topbar, then the page content flows below
+   it. The explorer card is full-bleed with small floating context cards over
+   it (key, zoom, room detail) instead of a persistent side column — see
+   docs/PROGRESS.md for why the two-column rail layout was replaced. */
+.app-shell {
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: var(--s-8) var(--s-5) var(--s-6);
-  background: var(--surface);
-  border-right: 1px solid var(--line);
 }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  height: 60px;
+  flex: none;
+  padding: 0 var(--s-6);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-cta { margin-left: auto; flex: none; min-height: 40px; border-radius: var(--r-pill); font-size: var(--fs-sm); box-shadow: var(--brand-action-shadow); white-space: nowrap; }
+.topbar-cta b { margin-left: var(--s-2); }
 
 .brand {
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  margin: 0 var(--s-2) var(--s-12);
+  flex: none;
   color: var(--brand-700);
   text-decoration: none;
   font: 800 var(--fs-xl) var(--font-sans);
@@ -394,14 +406,14 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .brand-mark i:nth-child(2) { height: 26px; background: var(--brand-600); }
 .brand-mark i:nth-child(3) { height: 20px; }
 
-.main-nav { display: grid; gap: var(--s-1); }
+.main-nav { display: flex; align-items: center; gap: var(--s-1); }
 .nav-item {
   display: flex;
   align-items: center;
-  gap: var(--s-3);
+  gap: var(--s-2);
   border: 0;
-  border-radius: var(--r-md);
-  padding: var(--s-3);
+  border-radius: var(--r-pill);
+  padding: var(--s-2) var(--s-4);
   background: transparent;
   color: var(--ink-500);
   font: 600 var(--fs-sm) var(--font-sans);
@@ -421,104 +433,34 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   font: var(--fs-micro) var(--font-mono);
 }
 
-.sidebar-bottom { margin-top: auto; }
+/* ── 05 Page — intro line, explorer card, insight row ───────────────────── */
 
-.help {
+.page {
+  max-width: 1240px;
   width: 100%;
-  justify-content: flex-start;
-  margin-top: var(--s-1);
-}
-.help span {
-  display: inline-grid;
-  place-items: center;
-  height: 16px;
-  width: 16px;
-  border: 1px solid var(--ink-400);
-  border-radius: var(--r-pill);
-  font-size: var(--fs-micro);
+  margin: 0 auto;
+  padding: var(--s-8) var(--s-6) var(--s-10);
 }
 
-/* ── 05 Explorer panel — pitch strip + toolbar ──────────────────────────── */
+.page-intro { margin-bottom: var(--s-6); }
+.page-intro h1 {
+  font-size: var(--fs-4xl);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+  color: var(--ink-900);
+}
+.page-intro h1 em { font-style: normal; color: var(--brand-600); }
 
-.main-content { margin-left: 248px; flex: 1; min-width: 0; }
-
-/* ── 06 Explorer panel — one unified shell ──────────────────────────────── */
-
-/* The whole explorer — pitch, toolbar, stage, stats — is ONE card with
-   internal hairline dividers between sections. Do not give individual
-   sections their own border/radius/shadow/margin; that produces the
-   fragmented "floating cards" look this structure replaced. */
-.app-panel {
-  margin: var(--s-6) var(--s-8) var(--s-8);
-  overflow: hidden;
+/* One card, one shadow, one set of rounded corners — the toolbar, the stage
+   and its floating context cards all live inside it. */
+.explorer-card {
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   background: var(--surface);
   box-shadow: var(--e-2);
+  overflow: hidden;
 }
-
-.hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-6);
-  padding: var(--s-6);
-  border-bottom: 1px solid var(--line-soft);
-}
-.eyebrow {
-  margin: 0 0 var(--s-2);
-  color: var(--accent-600);
-  font: 500 var(--fs-micro) var(--font-mono);
-  letter-spacing: var(--track-mono);
-}
-.hero h1 { font-size: var(--fs-2xl); font-weight: 800; letter-spacing: -.03em; }
-.hero h1 em { font-family: var(--font-display); font-weight: 600; font-style: italic; color: var(--brand-500); }
-.hero-copy {
-  max-width: 440px;
-  margin: var(--s-2) 0 0;
-  color: var(--ink-500);
-  font-size: var(--fs-sm);
-  line-height: var(--lh-base);
-}
-
-.hero-actions { display: flex; align-items: center; gap: var(--s-5); flex: none; }
-
-.live-summary {
-  display: grid;
-  grid-template-columns: 16px auto;
-  column-gap: var(--s-2);
-  align-items: center;
-  min-width: 168px;
-  padding-left: var(--s-5);
-  border-left: 1px solid var(--line);
-}
-.live-summary .pulse {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--r-pill);
-  background: var(--accent-500);
-  box-shadow: 0 0 0 4px var(--accent-100);
-}
-.summary-label {
-  grid-column: 1 / -1;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  font: var(--fs-micro) var(--font-mono);
-  letter-spacing: var(--track-mono);
-  color: var(--ink-500);
-}
-.live-summary strong {
-  grid-column: 1 / -1;
-  margin-top: var(--s-1);
-  font: 800 var(--fs-2xl) var(--font-sans);
-  letter-spacing: -.03em;
-}
-.live-summary small { grid-column: 1 / -1; color: var(--ink-400); font-size: var(--fs-micro); }
-
-.hero-cta { min-height: 46px; padding: var(--s-3) var(--s-5); border-radius: var(--r-pill); font-size: var(--fs-sm); box-shadow: var(--brand-action-shadow); white-space: nowrap; }
-.hero-cta b { margin-left: var(--s-2); font-size: var(--fs-md); }
 
 .toolbar {
   position: relative;
@@ -526,13 +468,31 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   height: 64px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-  padding: 0 var(--s-6);
-  border-bottom: 1px solid var(--line-soft);
+  gap: var(--s-5);
+  padding: 0 var(--s-5);
+  border-bottom: 1px solid var(--line);
   background: var(--surface-sunk);
 }
-.toolbar-actions { display: flex; align-items: center; gap: var(--s-3); }
+.floor-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 0 var(--s-3);
+  height: 38px;
+  color: var(--ink-500);
+  background: var(--surface);
+}
+.floor-select-wrap select {
+  border: 0;
+  background: transparent;
+  color: var(--ink-800);
+  font: 600 var(--fs-sm) var(--font-sans);
+  cursor: pointer;
+}
+.floor-select-wrap select:focus-visible { outline: 0; box-shadow: none; }
 
 .building-picker { position: relative; display: flex; align-items: center; }
 .picker-arrow {
@@ -614,57 +574,121 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .building-menu::-webkit-scrollbar { width: 7px; }
 .building-menu::-webkit-scrollbar-thumb { background: var(--line); border-radius: var(--r-pill); }
 
-.legend {
-  display: flex;
-  align-items: center;
-  gap: var(--s-5);
-  height: 38px;
-  padding: 0 var(--s-6);
-  border-bottom: 1px solid var(--line-soft);
-  color: var(--ink-500);
-  font-size: var(--fs-micro);
-}
-.legend span { display: flex; align-items: center; gap: var(--s-2); }
-.legend i { display: inline-block; height: 9px; width: 9px; border-radius: 3px; }
-.legend i.unlisted { background: var(--status-unlisted); }
-.legend i.occupied { background: var(--status-occupied); }
-.legend i.open     { background: var(--status-open); box-shadow: 0 0 6px var(--status-open); }
-.legend i.match    { background: var(--status-match); box-shadow: 0 0 6px var(--status-match); }
-
+/* The status key sits inside the toolbar, pinned right — one band, not two. */
 /* Stage — the 3D viewer and the site/floor/map views are mutually exclusive
    (toggled via .hidden in app.js selectView()); stack them so switching
-   views never reflows the panel around them. */
-.panel-stage { position: relative; height: 500px; }
+   views never reflows the panel around them. A fixed height gives the
+   floating context cards below a stable frame to sit inside. */
+.panel-stage { position: relative; height: clamp(440px, 58vh, 600px); }
 .hero-model, .visual-stage { position: absolute; inset: 0; }
-.hero-model { display: grid; grid-template-columns: 74px minmax(0, 1fr); overflow: hidden; background: var(--scene); }
+.hero-model { overflow: hidden; background: var(--scene); }
 .visual-stage { background: var(--surface-sunk); }
 
-.sidebar-stats { display: grid; gap: var(--s-2); }
-.sidebar-stat {
+/* Floating context cards — shared by every view, siblings of .hero-model /
+   .visual-stage inside .panel-stage. White so they read consistently over
+   both the dark 3D scene and the light floor-plan background. */
+.key-card, .zoom-controls, .room-detail-card {
+  position: absolute;
+  z-index: 4;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--e-2);
+}
+.key-card { top: var(--s-4); left: var(--s-4); padding: var(--s-3) var(--s-4); display: grid; gap: var(--s-2); }
+.key-card p { margin: 0 0 2px; font: 700 var(--fs-sm) var(--font-sans); color: var(--ink-900); }
+.key-card span { display: flex; align-items: center; gap: var(--s-2); color: var(--ink-600); font-size: var(--fs-xs); }
+.key-card i { display: inline-block; height: 10px; width: 10px; border-radius: 3px; }
+.key-card i.unlisted { background: var(--status-unlisted); }
+.key-card i.occupied { background: var(--status-occupied); }
+.key-card i.open     { background: var(--status-open); box-shadow: 0 0 6px var(--status-open); }
+.key-card i.match    { background: var(--status-match); box-shadow: 0 0 6px var(--status-match); }
+
+.zoom-controls { bottom: var(--s-4); left: var(--s-4); display: grid; gap: 1px; padding: 3px; }
+.zoom-controls button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-600);
+  font: 700 var(--fs-lg) var(--font-sans);
+  cursor: pointer;
+}
+.zoom-controls button:hover { background: var(--surface-sunk); color: var(--brand-600); }
+
+.room-detail-card {
+  top: var(--s-4);
+  right: var(--s-4);
+  width: 264px;
+  max-height: calc(100% - var(--s-8));
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: var(--s-4);
+}
+.room-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s-2);
+  margin-top: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line-soft);
+}
+.room-detail-stats div { text-align: center; }
+.room-detail-stats strong { display: block; font: 800 var(--fs-lg) var(--font-sans); color: var(--ink-900); }
+.room-detail-stats small { color: var(--ink-500); font-size: var(--fs-micro); }
+
+/* ── 06 Insight row ──────────────────────────────────────────────────────── */
+
+.insight-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--s-4);
+  margin-top: var(--s-5);
+}
+.insight-tile {
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  padding: var(--s-3);
+  padding: var(--s-4);
   border: 1px solid var(--line-soft);
-  border-radius: var(--r-md);
-  background: var(--surface-sunk);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow var(--t-fast) var(--ease);
 }
-.stat-icon {
+.insight-tile:hover { box-shadow: var(--e-1); }
+.insight-tile--amber { background: var(--status-open-tint); }
+.insight-tile--blue { background: var(--brand-50); }
+.insight-icon {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   flex: none;
   border-radius: var(--r-pill);
-  font: var(--fs-xl) Georgia, serif;
+  background: var(--surface);
+  font: var(--fs-lg) Georgia, serif;
 }
-.stat-icon.amber  { background: var(--status-open-tint);     color: #8a6011; }
-.stat-icon.green  { background: var(--status-occupied-tint); color: #2f6242; }
-.stat-icon.purple { background: var(--status-match-tint);    color: #246475; }
-.stat-icon.blue   { background: var(--brand-50);             color: var(--brand-600); }
-.sidebar-stat p { margin: 0; display: grid; gap: 2px; min-width: 0; }
-.sidebar-stat strong { font: 800 var(--fs-3xl) var(--font-sans); line-height: 1; }
-.sidebar-stat small { color: var(--ink-500); font: 600 var(--fs-sm) var(--font-sans); line-height: var(--lh-base); }
+.insight-tile--amber .insight-icon { color: #8a6011; }
+.insight-tile--blue .insight-icon { color: var(--brand-600); }
+.insight-copy { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.insight-copy small { color: var(--ink-500); font-size: var(--fs-xs); }
+.insight-copy strong { font: 800 var(--fs-lg) var(--font-sans); color: var(--ink-900); }
+.insight-chevron { color: var(--ink-400); font-size: var(--fs-lg); }
+.privacy-tile {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  max-width: 220px;
+  color: var(--ink-500);
+  font-size: var(--fs-micro);
+  line-height: var(--lh-base);
+}
+.privacy-icon { flex: none; color: var(--ink-400); font-size: var(--fs-xl); }
 
 /* ── 07 Views ────────────────────────────────────────────────────────────── */
 
@@ -738,25 +762,6 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .friend-city-hud li i.phd { background: var(--status-graduate); }
 .friend-city-hud li b { margin-left: auto; color: var(--on-scene); font: var(--fs-micro) var(--font-mono); }
 
-.floor-rail--dark {
-  border-right: 1px solid var(--scene-edge);
-  background: var(--scene);
-}
-.floor-rail--dark > span { color: var(--on-scene-muted); }
-.floor-rail--dark button {
-  border-color: var(--scene-edge);
-  background: var(--scene-panel);
-  color: var(--on-scene-muted);
-}
-.floor-rail--dark button:hover { background: var(--accent-500); border-color: var(--accent-500); color: #fff; }
-.floor-rail--dark button.active {
-  background: var(--accent-500);
-  border-color: var(--accent-500);
-  color: #fff;
-  box-shadow: none;
-}
-.floor-rail--dark .all-floors { margin-top: auto; height: 34px; font: 500 var(--fs-micro) var(--font-mono); }
-
 .three-credit {
   position: absolute;
   left: 50%;
@@ -769,7 +774,6 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   white-space: nowrap;
   pointer-events: none;
 }
-.friend-city .floor-rail--dark { display: none; }
 .friend-city .three-readout { top: auto; bottom: var(--s-6); }
 
 /* Campus map */
@@ -888,63 +892,26 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .site-card strong { display: block; margin-top: var(--s-2); font-size: var(--fs-lg); }
 .site-card > span { display: block; margin: 3px 0 var(--s-3); color: var(--ink-500); font-size: var(--fs-micro); }
 
-/* Floor plan */
-.floor-view {
+/* Floor plan — full-bleed; floor selection is the shared toolbar dropdown,
+   room detail is the shared floating card, so this view is the drawing only. */
+.floor-view { height: 100%; background: var(--surface); }
+.floor-canvas {
+  position: relative;
   height: 100%;
-  display: grid;
-  grid-template-columns: 74px minmax(0, 1fr) 236px;
-  background: var(--surface);
-}
-.floor-rail {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-5) 0;
-  border-right: 1px solid var(--line-soft);
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--s-5);
 }
-.floor-rail > span {
-  font: var(--fs-micro) var(--font-mono);
-  letter-spacing: var(--track-mono);
-  color: var(--ink-400);
-}
-.floor-rail #floor-buttons, .floor-rail-buttons { display: grid; gap: var(--s-2); }
-.floor-rail button {
-  width: 34px;
-  height: 30px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  color: var(--ink-500);
-  font: 500 var(--fs-micro) var(--font-mono);
-  cursor: pointer;
-  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
-}
-.floor-rail button:hover { background: var(--brand-50); color: var(--brand-600); }
-.floor-rail button.active {
-  background: var(--brand-600);
-  border-color: var(--brand-600);
-  color: #fff;
-  box-shadow: var(--e-2);
-}
-.floor-rail .ground-floor { margin-top: auto; height: 42px; font-size: var(--fs-xs); }
-.ground-floor span { display: block; margin-top: 2px; font: 7px var(--font-sans); }
 
-.floor-canvas { position: relative; overflow: hidden; padding: var(--s-5) var(--s-6) var(--s-3); }
-.floor-heading { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: start; }
-.floor-heading p {
-  margin: 0;
-  font: var(--fs-micro) var(--font-mono);
-  letter-spacing: var(--track-mono);
-  color: var(--brand-600);
-}
-.floor-heading h2 { margin-top: var(--s-1); font-size: var(--fs-lg); }
-.floor-heading h2 span { color: var(--ink-400); font-weight: 400; }
-
+/* Grows with the stage rather than a fixed height; the SVG's viewBox keeps the
+   drawing's aspect ratio, so extra height is never distortion. */
 .plan-wrap {
   position: relative;
-  height: 356px;
-  margin: var(--s-1) calc(var(--s-1) * -1) 0;
+  flex: 1;
+  min-height: 0;
+  margin: var(--s-3) calc(var(--s-1) * -1) 0;
   overflow: hidden;
   border-radius: var(--r-md);
   background: var(--surface);
@@ -971,22 +938,6 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .room.match { fill: var(--status-match); }
 .room.selected-room { opacity: .9; stroke: var(--ink-900); stroke-width: 4; }
 
-.plan-tip {
-  position: absolute;
-  bottom: var(--s-2);
-  left: 50%;
-  transform: translateX(-50%);
-  border: 1px solid var(--line);
-  border-radius: var(--r-pill);
-  padding: var(--s-2) var(--s-3);
-  background: var(--surface);
-  color: var(--ink-500);
-  font-size: var(--fs-micro);
-  white-space: nowrap;
-  box-shadow: var(--e-1);
-}
-.plan-tip span { margin-right: var(--s-1); color: var(--brand-600); font-size: var(--fs-md); }
-
 /* Pod-hostel plan overlay (Vivekananda, S N Bose) */
 .pod-plan-outline { display: none; }
 .pod-layout .blueprint { opacity: 0; }
@@ -1000,10 +951,9 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   text-anchor: middle;
 }
 
-/* ── 08 Room panel ───────────────────────────────────────────────────────── */
+/* ── 08 Room detail card ─────────────────────────────────────────────────── */
 
-.room-panel { padding: var(--s-5); border-left: 1px solid var(--line-soft); background: var(--surface); }
-.panel-empty { margin-top: 108px; color: var(--ink-500); text-align: center; }
+.panel-empty { padding: var(--s-4) 0; color: var(--ink-500); text-align: center; }
 .empty-icon {
   display: grid;
   place-items: center;
@@ -1215,41 +1165,24 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 }
 .notice b { font-size: var(--fs-md); line-height: 1; }
 
-/* ── 10 Bento interface refresh ─────────────────────────────────────────── */
+/* ── 10 Component refinements ───────────────────────────────────────────── */
 
-body { background: radial-gradient(circle at 76% 4%, var(--brand-50), transparent 28rem), var(--canvas); }
-.sidebar { width: 248px; margin: var(--s-4); inset: var(--s-4) auto auto var(--s-4); padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--e-2); }
-.brand { margin: 0 0 var(--s-8); }
+body { background: var(--canvas); }
 .brand small { color: var(--ink-500); }
-.main-nav { gap: var(--s-2); }
-.nav-item { min-height: 48px; padding: var(--s-3) var(--s-4); color: var(--ink-600); font-size: var(--fs-sm); }
+.nav-item { color: var(--ink-600); font-size: var(--fs-sm); }
 .nav-item.active { box-shadow: inset 0 0 0 1px var(--brand-100); }
-.sidebar-bottom { margin-top: var(--s-6); }
 
-.main-content { margin-left: 280px; padding: 0 var(--s-4) var(--s-6); }
-
-.app-panel { margin: var(--s-6) var(--s-4) var(--s-4); border-radius: calc(var(--r-xl) + var(--s-1)); box-shadow: var(--e-3); }
-.hero h1 { font-size: clamp(22px, 2vw, 28px); line-height: 1.15; color: var(--ink-900); }
-.hero-copy { color: var(--ink-600); font-size: var(--fs-sm); }
-.hero-actions .live-summary { padding: var(--s-3) var(--s-4); border: 1px solid var(--line-soft); border-radius: var(--r-lg); background: var(--surface-sunk); border-left: 0; }
-.hero-actions .live-summary strong { color: var(--ink-900); font-size: var(--fs-xl); line-height: .9; }
-
-.hero-model .three-view { min-height: 272px; }
-.hero-model .three-title { top: var(--s-4); left: var(--s-5); }
-.hero-model .three-readout { top: var(--s-4); right: var(--s-4); min-width: 180px; padding: var(--s-2) var(--s-3); }
-.hero-model .three-readout span { white-space: nowrap; }
-.hero-model .three-credit { display: none; }
-.legend { flex-wrap: nowrap; overflow-x: auto; background: var(--surface-sunk); }
+/* The Key card now occupies the 3D scene's top-left corner, and the room
+   detail card covers what the readout used to say — both on-canvas text
+   overlays are redundant with the floating cards and hidden. */
+.hero-model .three-title, .hero-model .three-readout { display: none; }
 
 .segmented { border: 1px solid var(--line); border-radius: var(--r-pill); padding: var(--s-1); background: var(--surface); }
 .seg-btn { min-height: 38px; padding: var(--s-2) var(--s-4); border-radius: var(--r-pill); font-size: var(--fs-xs); }
 .seg-btn.active { color: var(--ink-900); box-shadow: var(--e-1); }
 .building-choice { padding: var(--s-2) var(--s-3); border-radius: var(--r-lg); background: var(--surface); }
-.building-choice small, .building-choice > b { color: var(--ink-500); }
-.building-choice strong { color: var(--ink-900); font-size: var(--fs-sm); }
+.building-choice strong { color: var(--ink-900); font-size: var(--fs-md); }
 .toolbar .btn { min-height: 40px; border-radius: var(--r-pill); }
-.sidebar-stat strong { color: var(--ink-900); }
-.sidebar-stat small { color: var(--ink-600); }
 
 .modal-backdrop { background: var(--overlay-backdrop); }
 .modal-card { width: min(680px, 100%); padding: 36px; border: 1px solid var(--line); border-radius: calc(var(--r-xl) + 2px); }
@@ -1288,47 +1221,38 @@ body { background: radial-gradient(circle at 76% 4%, var(--brand-50), transparen
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+@media (max-width: 1240px) {
+  .page { max-width: 100%; }
+  .page-intro h1 { font-size: var(--fs-3xl); }
+  .room-detail-card { width: 232px; }
+}
+
 @media (max-width: 980px) {
-  .sidebar { inset: 0 auto 0 0; width: 72px; margin: 0; padding: var(--s-6) var(--s-2); border: 0; border-radius: 0; box-shadow: none; }
-  .brand { margin: 0 auto var(--s-10); }
-  .brand > span:last-child, .nav-item { font-size: 0; }
-  .brand small, .nav-item b, .sidebar-bottom { display: none; }
-  .nav-item { justify-content: center; padding: var(--s-3) 0; }
-  .nav-icon { font-size: var(--fs-xl); }
-  .main-content { margin-left: 72px; padding: 0; }
-  .app-panel { margin: var(--s-3) var(--s-3) var(--s-5); }
-  .hero { flex-direction: column; align-items: flex-start; gap: var(--s-4); }
-  .room-panel { display: none; }
-  .floor-view, .hero-model { grid-template-columns: 64px 1fr; }
+  .insight-row { grid-template-columns: 1fr 1fr; }
+  .privacy-tile { grid-column: 1 / -1; max-width: none; }
+  .room-detail-card { width: 210px; padding: var(--s-3); }
+  .key-card { padding: var(--s-2) var(--s-3); }
 }
 
 @media (max-width: 690px) {
-  .app-shell { display: block; }
-  .sidebar { display: none; }
-  .main-content { width: 100%; margin-left: 0; }
-  .app-panel { margin: var(--s-3) var(--s-3) var(--s-4); border-radius: var(--r-lg); }
-  .hero { padding: var(--s-5); flex-direction: column; align-items: stretch; }
-  .hero h1 { font-size: var(--fs-2xl); }
-  .hero-actions { flex-direction: column; align-items: stretch; gap: var(--s-3); }
-  .live-summary { border-left: 0; padding-left: 0; }
-  .hero-cta { width: 100%; }
+  .page { padding: var(--s-5) var(--s-4) var(--s-8); }
+  .topbar { height: auto; flex-wrap: wrap; gap: var(--s-3); padding: var(--s-3); }
+  .main-nav { order: 3; width: 100%; }
+  .nav-item { flex: 1; justify-content: center; }
+  .topbar-cta { width: auto; }
+  .page-intro h1 { font-size: var(--fs-2xl); }
   .toolbar { height: auto; padding: var(--s-3); flex-wrap: wrap; row-gap: var(--s-2); }
-  .toolbar-actions { flex-wrap: wrap; row-gap: var(--s-2); }
   .toolbar > * { flex: none; }
+  .floor-select-wrap { margin-left: 0; }
   .building-choice { padding: var(--s-2) var(--s-1); }
   .building-menu { left: 0; width: min(296px, calc(100vw - 34px)); grid-template-columns: 1fr; max-height: 250px; }
   .seg-btn { padding: var(--s-2); }
-  .panel-stage { height: 440px; }
+  .panel-stage { height: 420px; }
+  .key-card span:not(:first-child) { display: none; }
+  .room-detail-card { width: 176px; padding: var(--s-3); font-size: var(--fs-xs); }
+  .insight-row { grid-template-columns: 1fr; }
   .site-card, .map-card { right: var(--s-3); top: 58px; width: 168px; padding: var(--s-3); }
-  .floor-canvas { padding-left: var(--s-3); padding-right: var(--s-3); }
-  .plan-wrap { margin-left: calc(var(--s-6) * -1); margin-right: calc(var(--s-6) * -1); }
-  .floor-heading h2 { font-size: var(--fs-md); }
-  .three-title { top: var(--s-4); left: var(--s-4); }
-  .three-readout { right: var(--s-3); top: 48px; min-width: 168px; padding: var(--s-2); }
-  .hero-model { grid-template-columns: 56px 1fr; }
-  .floor-rail--dark > span { display: none; }
-  .floor-rail--dark, .floor-rail { padding: var(--s-3) 0; }
-  .three-credit { display: none; }
+  .floor-canvas { padding: var(--s-3); }
   .friend-city-hud { left: var(--s-3); bottom: var(--s-3); width: 224px; }
   .friend-city .three-readout { display: none; }
   .modal-card { padding: var(--s-6) var(--s-4); }
