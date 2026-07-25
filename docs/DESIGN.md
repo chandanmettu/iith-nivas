@@ -28,32 +28,29 @@ elements: primary buttons, active nav, selected states, chrome accents.
 
 ### Room status — never brand
 
-**This separation is deliberate and load-bearing.** An earlier version used red
-for both "primary button" and "vacant room", so a red button and a red room
-meant unrelated things on the same screen. Status colours now sit clear of the
-brand ramp, and **vacant is outlined rather than filled** — absence reads as
-absence.
+**This separation is deliberate and load-bearing.** Brand red means an action,
+never a room state. Swap-status colours sit clear of the brand ramp, so room
+information cannot be confused with an interactive control.
 
 | State | Token | Treatment |
 |---|---|---|
-| Occupied | `--status-occupied` `#47875f` | solid fill |
-| Vacant | `--status-vacant` `#c2554a` | **outline** on `--status-vacant-fill` `#fdece8` |
-| Intern reserve | `--status-intern` `#d99a2b` | solid fill |
-| M.Tech | `--status-mtech` `#6b4fa8` | solid fill |
-| Graduate | `--status-graduate` `#c75b8c` | solid fill |
+| Unlisted | `--status-unlisted` `#514346` | darkened solid; means no published listing |
+| Registered | `--status-occupied` `#47875f` | solid fill |
+| Open to swap | `--status-open` `#d99a2b` | solid fill with a soft glow |
+| Match for you | `--status-match` `#3c8ca0` | brighter personalized glow |
 
-Each has a `-tint` variant for pill backgrounds.
+Each has a `-tint` variant for pill backgrounds. The product only communicates
+student-published swap information; it makes no official room-allocation claim.
 
 **`viewer3d.js` duplicates these values** in its `statusColors` map (three.js
 can't read CSS variables). If you change a status colour, change it in both
 places — a room must read as the same state in the 3D scene and on the floor
-plan. The city-scale friend markers use deliberately *lifted* versions, because
-the flat UI values go muddy against the dark scene.
+plan.
 
-### Neutrals — warm
+### Neutrals — cool, high contrast
 
-Greys are warm (maroon-tinted), never neutral grey. `--ink-900` → `--ink-400`
-for text, `--line` / `--line-soft` for borders, `--surface` (cards) /
+Use the high-contrast cool-neutral scale: `--ink-900` → `--ink-400` for text,
+`--line` / `--line-soft` for borders, `--surface` (cards) /
 `--surface-sunk` (recessed) / `--canvas` (page) for backgrounds.
 
 `--scene` `#24181b` is the 3D viewer background. Overlays on it use the
@@ -69,10 +66,10 @@ One scale. No ad-hoc values.
 | Token | Value | Use |
 |---|---|---|
 | `--r-xs` | 4px | tiny chips, floor buttons |
-| `--r-sm` | 6px | buttons, inputs, list rows |
-| `--r-md` | 10px | menus, panels, segmented controls |
-| `--r-lg` | 14px | cards, floating cards |
-| `--r-xl` | 20px | workspace shell, modals |
+| `--r-sm` | 12px | buttons, inputs, list rows |
+| `--r-md` | 16px | menus, panels, segmented controls |
+| `--r-lg` | 22px | cards, floating cards |
+| `--r-xl` | 30px | workspace shell, modals |
 | `--r-pill` | 999px | pills, avatars, badges |
 
 ## Space
@@ -88,7 +85,7 @@ section padding uses `--s-6`/`--s-8`; page gutters use `--s-10`/`--s-12`.
 - **Playfair Display** italic (`--font-display`) — the hero accent phrase **only**.
   Do not spread it to other headings.
 
-Scale: `--fs-micro` (10) · `--fs-xs` (11) · `--fs-sm` (12) · `--fs-md` (13, body)
+Scale: `--fs-micro` (10) · `--fs-xs` (12) · `--fs-sm` (14) · `--fs-md` (15, body)
 · `--fs-lg` (15) · `--fs-xl` (18) · `--fs-2xl` (24) · `--fs-3xl` (32) · `--fs-4xl` (40).
 
 ---
@@ -105,8 +102,8 @@ Every clickable control in the app is one of these. Do not invent a new button.
 | `.btn--block` | modifier — full width |
 | `.icon-btn` | square 30px, icon only (close, zoom, overflow) |
 | `.icon-btn--quiet` | borderless variant |
-| `.segmented` + `.seg-btn` | view switcher, request tabs |
-| `.chip` | small pill toggle (Friends map) |
+| `.segmented` + `.seg-btn` | view switcher |
+| `.chip` | small pill toggle when a compact selectable control is needed |
 | `.pill.pill--<state>` | **read-only** status label — never clickable |
 | `.avatar` (+ `--lg`, `--private`) | person marker |
 | `.field-grid` | form layout — 2-col, collapses to 1 on mobile |
@@ -128,11 +125,32 @@ Every clickable control in the app is one of these. Do not invent a new button.
 
 ## Layout
 
-- Sidebar 248px fixed → 72px icon rail under 980px → content margin follows.
-- Workspace is one rounded `--r-xl` shell: toolbar / legend / stage (500px) /
-  stats. The stage swaps between four views; only one is ever un-`hidden`.
-- Breakpoints: **980px** (collapse sidebar, drop the room panel) and **690px**
-  (mobile — hide hero copy and live summary, stack everything).
+- Sidebar 248px fixed → 72px icon rail under 980px → hidden under 690px.
+  Holds the primary nav and the three activity stat tiles
+  (`.sidebar-stats`/`.sidebar-stat`) — there is no listing-CTA card in the
+  sidebar; that action lives once, in the hero (`#hero-create-listing`) and
+  once in the nav ("My swap listing" tab). Don't add a third entry point.
+- **The entire explorer is one `.app-panel` shell** — pitch strip / toolbar /
+  legend / stage (500px), divided only by hairline borders. Do not give any
+  of these sections its own margin, border, radius, or shadow; that produces
+  a fragmented "stack of floating cards" look, which is exactly what this
+  structure replaced (see PROGRESS.md). One card, one shadow, one set of
+  rounded corners. The activity stats live in the sidebar, not this panel.
+- `#legend` sits as its own bar between the toolbar and `.panel-stage`,
+  **shared by both the 3D and floor-plan views** — it is not nested inside
+  `.hero-model` any more. If you add a new view, it appears above that too.
+- Inside the panel, `.panel-stage` holds `.hero-model` (3D) and
+  `#visual-stage` (site/floor/map) as absolutely-positioned siblings at a
+  fixed height — they're mutually exclusive via `.hidden`, so stacking them
+  means switching views never reflows the panel around them.
+- The 3D viewer can show 1–3 hostels at once (`buildingSlots` in
+  `viewer3d.js`), laid out side by side with a floating name+count label per
+  building. Selection is multi-select (checkbox-style) in the hostel dropdown,
+  capped at 3 — there is no search input any more, it was removed deliberately.
+- Breakpoints: **980px** (collapse sidebar to icon rail, stack the pitch
+  strip, drop the room panel) and **690px** (mobile — hide sidebar entirely,
+  wrap the toolbar, stack everything). Note the activity stats are only
+  visible when the sidebar is — they disappear below 690px along with nav.
 
 ## Assets
 

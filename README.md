@@ -1,9 +1,8 @@
 # Nivas — IIT Hyderabad hostel explorer
 
-An interactive explorer for the IIT Hyderabad hostel precinct: browse all 23
-hostels, orbit a 3D building model, navigate floor by floor on the real
-architectural drawing, check room status, locate friends, and request a room
-swap.
+An interactive room-swap board for the IIT Hyderabad hostel precinct: browse
+all 23 hostels, orbit a 3D building model, navigate floor by floor on the real
+architectural drawing, and see student-submitted room-swap listings.
 
 ## Start here
 
@@ -47,16 +46,28 @@ vendor/     ← vendored three.js + OrbitControls — do not replace with a CDN
 docs/       ← PROGRESS.md, DESIGN.md
 ```
 
-## ⚠ The data is not real
+## Room-swap data model
 
-Room occupancy, resident names, and the friend directory are all demonstration
-data. `DataSource.load()` in `app.js` is the only function that knows where data
-comes from — rewrite it to fetch from an authenticated endpoint returning the
-same shape and nothing else needs to change.
+Nivas makes **no claim about official occupancy or vacancy**. A room starts as
+**Unlisted** and only changes when a student creates a listing for that exact
+room:
 
-**Before connecting real data, the privacy model has to be settled.** Resident
-visibility must be opt-in, and the API should return only the fields each
-student has consented to share. See open item 2 in `docs/PROGRESS.md`.
+- `Unlisted` — no student has published swap information for this room.
+- `Registered` — a student registered their room but is not looking to move.
+- `Open to swap` — a student registered and is willing to move.
+- `Match for you` — both students’ stated preferences align.
+
+Students enter a plain room number such as `912`: the first digit is the floor,
+and the final two digits identify the room on that floor. The supplied typical
+plan is grouped into four pods: rooms 01–08, 09–16, 17–22, and 23–30. Students
+choose a **destination hostel and preferred pod**, not another student's exact
+room.
+
+The current Phase 1 form stores a listing only in that browser so the interface
+can be tested without inventing residents. Phase 2 will connect a private
+Google Form/Sheet to a sanitized read-only listing endpoint. `DataSource.load()`
+in `app.js` is the only place that will need the endpoint connection; it must
+never receive phone numbers or email addresses.
 
 The campus and building geometry is reference-informed, not surveyed — add
 institute-verified hostel coordinates before relying on it for precise
