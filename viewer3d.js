@@ -259,50 +259,15 @@ function createResidentialBuilding() {
   return { group, floorGroups, roomMeshes };
 }
 
-// A floating name + aggregate-availability label above each building slot,
-// drawn on a canvas sprite so it always faces the camera. `update()` redraws
-// the texture in place rather than recreating the sprite.
-function makeLabelSprite() {
-  const labelCanvas = document.createElement('canvas');
-  labelCanvas.width = 640; labelCanvas.height = 150;
-  const context = labelCanvas.getContext('2d');
-  const texture = new THREE.CanvasTexture(labelCanvas);
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }));
-  sprite.scale.set(6.6, 1.55, 1);
-  function update(name, openCount, matchCount) {
-    context.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
-    context.fillStyle = 'rgba(36, 24, 27, .88)';
-    context.fillRect(0, 0, labelCanvas.width, labelCanvas.height);
-    context.fillStyle = '#ffe4d0';
-    context.font = '700 42px monospace';
-    context.textAlign = 'left';
-    context.fillText(name.toUpperCase(), 26, 62);
-    context.font = '600 28px monospace';
-    context.fillStyle = statusColors.open;
-    context.beginPath(); context.arc(40, 106, 10, 0, Math.PI * 2); context.fill();
-    context.fillStyle = '#ffe4d0';
-    context.fillText(`${openCount} open`, 60, 116);
-    context.fillStyle = statusColors.match;
-    context.beginPath(); context.arc(280, 106, 10, 0, Math.PI * 2); context.fill();
-    context.fillStyle = '#ffe4d0';
-    context.fillText(`${matchCount} match`, 300, 116);
-    texture.needsUpdate = true;
-  }
-  update('', 0, 0);
-  return { sprite, update };
-}
-
-const MAX_BUILDING_SLOTS = 3;
-const buildingSlots = Array.from({ length: MAX_BUILDING_SLOTS }, () => {
-  const instance = createResidentialBuilding();
-  const label = makeLabelSprite();
-  label.sprite.position.set(0, residentialHeight + groundClearance + 2.6, 0);
-  instance.group.add(label.sprite);
-  instance.label = label;
-  instance.hostel = null;
-  scene.add(instance.group);
-  return instance;
-});
+// A single shared building instance, recoloured per whichever hostel is
+// currently selected. An earlier version of this file rendered up to 3
+// hostels side by side for comparison — reverted (see docs/PROGRESS.md):
+// the shared camera meant orbiting moved all 3 together, independent
+// per-building orbiting would have needed a split-viewport rewrite, and
+// none of that fixed the real cause of the lag (3x the detailed geometry
+// rendering every frame either way).
+const residential = createResidentialBuilding();
+scene.add(residential.group);
 
 // Vivekananda and S. N. Bose are the older green-and-white, shared-room
 // hostels. They are no longer selectable in the live app (see
@@ -369,10 +334,9 @@ for (let x = -5.75; x <= 5.75; x += 2.3) {
   column.position.set(x, groundClearance / 2, -1.65); column.castShadow = true; column.receiveShadow = true; podBuilding.add(column);
 }
 
-/* ── Layout, status colouring and floor isolation across up to 3 slots ───── */
+/* ── Layout and status colouring ─────────────────────────────────────────── */
 
 let isolatedFloor = null;
-let lastHostels = [];
 function applyRoomStatus(mesh, status) {
   const nextStatus = statusColors[status] ? status : 'unlisted';
   const color = statusColors[nextStatus];
@@ -381,49 +345,22 @@ function applyRoomStatus(mesh, status) {
   mesh.material.emissive.set(color);
   mesh.material.emissiveIntensity = nextStatus === 'unlisted' ? .04 : nextStatus === 'match' ? .38 : nextStatus === 'open' ? .28 : .17;
 }
-let activeRoomMeshes = [];
-const CAMERA_FRAMING = {
-  1: { position: [31, 27, 35], target: [0, 10.5, 0], distance: [14, 48] },
-  2: { position: [41, 30, 47], target: [0, 10.5, 0], distance: [18, 64] },
-  3: { position: [51, 33, 60], target: [0, 10.5, 0], distance: [22, 82] },
-};
-const SLOT_SPACING = 24;
-function layoutBuildings(hostels) {
-  lastHostels = hostels;
-  const count = Math.max(1, Math.min(hostels.length, MAX_BUILDING_SLOTS));
-  const start = -(count - 1) * SLOT_SPACING / 2;
-  buildingSlots.forEach((slot, index) => {
-    const info = hostels[index];
-    slot.group.visible = Boolean(info);
-    if (!info) return;
-    slot.group.position.x = start + index * SLOT_SPACING;
-    slot.hostel = info.name;
-    slot.label.update(info.name, info.openCount || 0, info.matchCount || 0);
-    slot.floorGroups.forEach((floorGroup, floor) => { floorGroup.visible = isolatedFloor === null || floor === isolatedFloor; });
-    slot.roomMeshes.forEach(mesh => {
-      mesh.userData.hostel = info.name;
-      applyRoomStatus(mesh, (info.roomStatuses || {})[mesh.userData.visualRoomId] || 'unlisted');
-    });
+let activeRoomMeshes = residential.roomMeshes;
+function setBuilding(name, roomStatuses = {}) {
+  residential.roomMeshes.forEach(mesh => {
+    mesh.userData.hostel = name;
+    applyRoomStatus(mesh, roomStatuses[mesh.userData.visualRoomId] || 'unlisted');
   });
-  activeRoomMeshes = buildingSlots.filter(slot => slot.group.visible).flatMap(slot => slot.roomMeshes);
-  const framing = CAMERA_FRAMING[count] || CAMERA_FRAMING[1];
-  camera.position.set(...framing.position);
-  controls.target.set(...framing.target);
-  controls.minDistance = framing.distance[0];
-  controls.maxDistance = framing.distance[1];
-  controls.update();
 }
 function setFloor(value) {
   isolatedFloor = value === 'all' ? null : Number(value);
-  buildingSlots.forEach(slot => {
-    slot.floorGroups.forEach((floorGroup, index) => { floorGroup.visible = isolatedFloor === null || index === isolatedFloor; });
-  });
+  residential.floorGroups.forEach((floorGroup, index) => { floorGroup.visible = isolatedFloor === null || index === isolatedFloor; });
   document.querySelectorAll('[data-viewer-floor]').forEach(button => button.classList.toggle('active', button.dataset.viewerFloor === String(value)));
   readout.innerHTML = isolatedFloor === null ? `<strong>All residential levels</strong><span>Drag to rotate · scroll to zoom · click a room</span>` : `<strong>Floor ${String(isolatedFloor + 1).padStart(2, '0')} isolated</strong><span>Click a coloured room to inspect its status</span>`;
 }
 window.addEventListener('nivas:building-change', event => {
-  const hostels = event.detail?.hostels || [];
-  if (hostels.length) layoutBuildings(hostels);
+  const detail = event.detail;
+  if (detail?.name) setBuilding(detail.name, detail.roomStatuses || {});
 });
 
 /* ── Campus/friends city view — deferred, not exposed in the current UI ──── */
@@ -544,7 +481,7 @@ function setFriendMode(friends) {
   cityMode = Array.isArray(friends) && friends.length > 0;
   cityGroup.visible = cityMode;
   if (cityMode) {
-    buildingSlots.forEach(slot => { slot.group.visible = false; });
+    residential.group.visible = false;
     podBuilding.visible = false;
     activeRoomMeshes = [];
     clearCityLights();
@@ -573,7 +510,11 @@ function setFriendMode(friends) {
     clearCityLights();
     controls.minDistance = 14;
     controls.maxDistance = 48;
-    layoutBuildings(lastHostels);
+    controls.target.set(0, 10.5, 0);
+    camera.position.set(31, 27, 35);
+    controls.update();
+    residential.group.visible = true;
+    activeRoomMeshes = residential.roomMeshes;
   }
 }
 

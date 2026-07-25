@@ -143,10 +143,18 @@ Every clickable control in the app is one of these. Do not invent a new button.
   `#visual-stage` (site/floor/map) as absolutely-positioned siblings at a
   fixed height — they're mutually exclusive via `.hidden`, so stacking them
   means switching views never reflows the panel around them.
-- The 3D viewer can show 1–3 hostels at once (`buildingSlots` in
-  `viewer3d.js`), laid out side by side with a floating name+count label per
-  building. Selection is multi-select (checkbox-style) in the hostel dropdown,
-  capped at 3 — there is no search input any more, it was removed deliberately.
+- **The 3D viewer shows one hostel at a time.** A multi-hostel side-by-side
+  compare mode was tried and reverted — same shared camera meant orbiting
+  moved all buildings together, and it didn't fix the real lag (3x the
+  detailed geometry rendering regardless of camera setup). See PROGRESS.md
+  if this gets revisited; don't re-add it without solving the lag first.
+- **Both the 3D and floor-plan views use the same left floor-rail pattern**
+  (`.floor-rail` / `.floor-rail--dark`) — vertical stack of floor buttons,
+  same position, same interaction. Don't let one view's floor control drift
+  back to a different position/shape than the other's.
+- There is no search input — it was removed deliberately, twice (added back
+  once when the topbar was cleaned up, then removed again on request). Hostel
+  selection is the picker dropdown only.
 - Breakpoints: **980px** (collapse sidebar to icon rail, stack the pitch
   strip, drop the room panel) and **690px** (mobile — hide sidebar entirely,
   wrap the toolbar, stack everything). Note the activity stats are only

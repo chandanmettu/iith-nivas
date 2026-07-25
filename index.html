@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
     <!-- Bump ?v= on every CSS/JS change — shared hosting CDNs serve stale assets otherwise. -->
-    <link rel="stylesheet" href="./styles.css?v=19" />
+    <link rel="stylesheet" href="./styles.css?v=21" />
   </head>
   <body>
     <div class="app-shell">
@@ -25,7 +25,7 @@
         </nav>
 
         <div class="sidebar-bottom sidebar-stats">
-          <div class="sidebar-stat"><span class="stat-icon amber">⌂</span><p><strong id="rooms-count">0</strong><small id="rooms-caption">listed rooms in this hostel</small></p></div>
+          <div class="sidebar-stat"><span class="stat-icon amber">⌂</span><p><strong id="rooms-count">0</strong><small id="rooms-caption">Rooms listed</small></p></div>
           <div class="sidebar-stat"><span class="stat-icon green">⇄</span><p><strong id="open-swap-count">0</strong><small>open to swap here</small></p></div>
           <div class="sidebar-stat"><span class="stat-icon blue">✦</span><p><strong id="match-count">0</strong><small>matches for you</small></p></div>
         </div>
@@ -57,7 +57,7 @@
                 <b>⌄</b>
               </button>
               <button class="picker-arrow" id="next-building" aria-label="Next hostel">→</button>
-              <div class="building-menu hidden" id="building-menu" role="listbox" aria-label="Compare up to 3 IIT Hyderabad hostels"></div>
+              <div class="building-menu hidden" id="building-menu" role="listbox" aria-label="IIT Hyderabad hostels"></div>
             </div>
 
             <div class="segmented view-switch" role="group" aria-label="Map view">
@@ -83,6 +83,15 @@
 
           <div class="panel-stage">
             <div class="hero-model">
+              <aside class="floor-rail floor-rail--dark">
+                <span>FLOOR</span>
+                <div class="floor-rail-buttons">
+                  <button data-viewer-floor="8">09</button><button data-viewer-floor="7">08</button><button data-viewer-floor="6">07</button>
+                  <button data-viewer-floor="5">06</button><button data-viewer-floor="4">05</button><button data-viewer-floor="3">04</button>
+                  <button data-viewer-floor="2">03</button><button data-viewer-floor="1">02</button><button data-viewer-floor="0">01</button>
+                </div>
+                <button class="all-floors active" data-viewer-floor="all">ALL</button>
+              </aside>
               <div class="three-view" id="three-view">
                 <canvas id="hostel-3d-canvas" aria-label="Interactive 3D IIT Hyderabad hostel building"></canvas>
                 <div class="three-title">
@@ -91,13 +100,6 @@
                 </div>
                 <div class="three-readout" id="three-readout">
                   <strong>Orbit the building</strong><span>Drag to rotate · scroll to zoom · click a room</span>
-                </div>
-                <div class="three-floor-control">
-                  <span>ISOLATE FLOOR</span>
-                  <button data-viewer-floor="all" class="active">ALL</button>
-                  <button data-viewer-floor="8">09</button><button data-viewer-floor="7">08</button><button data-viewer-floor="6">07</button>
-                  <button data-viewer-floor="5">06</button><button data-viewer-floor="4">05</button><button data-viewer-floor="3">04</button>
-                  <button data-viewer-floor="2">03</button><button data-viewer-floor="1">02</button><button data-viewer-floor="0">01</button>
                 </div>
                 <div class="three-credit" id="three-credit">Based on the connected leaf-cluster, horizontal-band and rust-red louvre language of the IITH student housing reference.</div>
               </div>
@@ -163,10 +165,6 @@
                     </svg>
                     <div class="plan-tip"><span>⌁</span> IIT-H typical plan · select any highlighted room</div>
                   </div>
-                  <div class="plan-key">
-                    <span><i></i> Original architectural drawing</span>
-                    <span><i></i> Highlighted room inventory</span>
-                  </div>
                 </div>
                 <aside class="room-panel" id="room-panel">
                   <div class="panel-empty">
@@ -225,7 +223,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./app.js?v=13"></script>
-    <script type="module" src="./viewer3d.js?v=6"></script>
+    <script src="./app.js?v=14"></script>
+    <script type="module" src="./viewer3d.js?v=7"></script>
   </body>
 </html>

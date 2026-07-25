@@ -16,7 +16,6 @@ const HOSTELS = [
   "Kapila", "Kautilya", "Raman", "Ramanuja", "Ramanujan", "Sarabhai",
   "Susruta", "Varahamihira", "Viswesvaraya", "Vyasa"
 ];
-const MAX_SELECTED_HOSTELS = 3;
 
 const DEMO_LISTINGS = [
   ["901", true], ["902", true], ["904", true], ["906", true], ["908", true],
@@ -123,8 +122,7 @@ function sanitiseLocalProfile(profile) {
 }
 
 const state = loadState();
-let selectedHostels = ["Bhabha", "Kalam", "Ramanujan"];
-let focusIndex = 0;
+let buildingIndex = HOSTELS.indexOf("Bhabha");
 let activeFloor = FLOOR_COUNT;
 
 function persist() {
@@ -149,7 +147,7 @@ function roomMeta(value) {
 function normaliseRoom(value) {
   return roomMeta(value)?.id || "";
 }
-function currentBuilding() { return selectedHostels[focusIndex] || selectedHostels[0]; }
+function currentBuilding() { return db.hostels[buildingIndex]; }
 function activeRoomShapes() { return roomShapes; }
 function roomId(index) { return `${activeFloor}${String(index + 1).padStart(2, "0")}`; }
 function initials(name) { return name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase(); }
@@ -182,7 +180,7 @@ const BUILDING_PROFILE = {
   architecture: "REFERENCE-INFORMED 3D MODEL",
   meta: "4 labelled pods · 9 residential levels",
   credit: "Sample listings are shown for visual testing only.",
-  roomCaption: "sample room listings in this hostel"
+  roomCaption: "Rooms listed"
 };
 
 const STATUS_LABELS = {
@@ -330,16 +328,8 @@ function roomStatusMapFor(hostel) {
   return Object.fromEntries(activeListings().filter(listing => listing.hostel === hostel).map(listing => [listing.room, statusAtFor(hostel, listing.room)]));
 }
 function updateViewer() {
-  const hostels = selectedHostels.map(hostel => {
-    const here = activeListings().filter(listing => listing.hostel === hostel);
-    return {
-      name: hostel,
-      roomStatuses: roomStatusMapFor(hostel),
-      openCount: here.filter(listing => listing.willingToMove).length,
-      matchCount: here.filter(listingMatchesYou).length
-    };
-  });
-  window.dispatchEvent(new CustomEvent("nivas:building-change", { detail: { hostels, focusIndex } }));
+  const detail = { name: currentBuilding(), roomStatuses: roomStatusMapFor(currentBuilding()) };
+  window.dispatchEvent(new CustomEvent("nivas:building-change", { detail }));
 }
 function updateSummary() {
   const listings = activeListings();
@@ -369,40 +359,26 @@ function openActivity(hostel = currentBuilding(), ownHostel = ownListing()?.host
 
 /* ── Building selection, views ───────────────────────────────────────────── */
 
-function refreshBuilding() {
+function setBuilding(index) {
+  buildingIndex = (index + db.hostels.length) % db.hostels.length;
   const name = currentBuilding();
   document.getElementById("building-name").textContent = name;
-  document.getElementById("building-count-label").textContent = selectedHostels.length > 1 ? `SELECTED HOSTELS (${selectedHostels.length})` : "SELECTED HOSTEL";
   document.getElementById("site-card-building").textContent = name;
   document.getElementById("three-building-label").textContent = `${name.toUpperCase()} · ${BUILDING_PROFILE.architecture}`;
   document.getElementById("three-building-meta").textContent = BUILDING_PROFILE.meta;
   document.getElementById("three-credit").textContent = BUILDING_PROFILE.credit;
   document.getElementById("rooms-caption").textContent = BUILDING_PROFILE.roomCaption;
   document.getElementById("facade-hotspot-name").textContent = name;
-  renderBuildingMenu();
+  document.querySelectorAll(".building-option").forEach(option => {
+    const selected = Number(option.dataset.buildingIndex) === buildingIndex;
+    option.classList.toggle("selected", selected); option.setAttribute("aria-selected", String(selected));
+  });
   renderRooms(); renderFloorHeading(); resetPanel(); updateViewer();
-}
-function toggleHostelSelection(name) {
-  const index = selectedHostels.indexOf(name);
-  if (index !== -1) {
-    if (selectedHostels.length === 1) return showToast("Keep at least one hostel selected.");
-    selectedHostels.splice(index, 1);
-    if (focusIndex >= selectedHostels.length) focusIndex = selectedHostels.length - 1;
-  } else {
-    if (selectedHostels.length >= MAX_SELECTED_HOSTELS) return showToast(`Compare up to ${MAX_SELECTED_HOSTELS} hostels at once.`);
-    selectedHostels.push(name);
-    focusIndex = selectedHostels.length - 1;
-  }
-  refreshBuilding();
 }
 function renderBuildingMenu() {
   const menu = document.getElementById("building-menu");
-  menu.innerHTML = db.hostels.map(name => {
-    const selected = selectedHostels.includes(name);
-    const disabled = !selected && selectedHostels.length >= MAX_SELECTED_HOSTELS;
-    return `<button class="building-option ${selected ? "selected" : ""}" data-hostel="${escapeHtml(name)}" role="option" aria-selected="${selected}" ${disabled ? "disabled" : ""}>${escapeHtml(name)}</button>`;
-  }).join("");
-  menu.querySelectorAll(".building-option").forEach(option => option.addEventListener("click", () => toggleHostelSelection(option.dataset.hostel)));
+  menu.innerHTML = db.hostels.map((name, index) => `<button class="building-option ${index === buildingIndex ? "selected" : ""}" data-building-index="${index}" role="option" aria-selected="${index === buildingIndex}">${escapeHtml(name)}</button>`).join("");
+  menu.querySelectorAll(".building-option").forEach(option => option.addEventListener("click", () => { setBuilding(Number(option.dataset.buildingIndex)); closeBuildingMenu(); }));
 }
 function closeBuildingMenu() {
   document.getElementById("building-menu").classList.add("hidden");
@@ -448,8 +424,8 @@ function bindEvents() {
     document.querySelectorAll("[data-tab]").forEach(item => item.classList.toggle("active", item === button));
     if (button.dataset.tab === "listing") openProfile(); else selectView("3d");
   }));
-  document.getElementById("prev-building").addEventListener("click", () => { focusIndex = (focusIndex - 1 + selectedHostels.length) % selectedHostels.length; refreshBuilding(); });
-  document.getElementById("next-building").addEventListener("click", () => { focusIndex = (focusIndex + 1) % selectedHostels.length; refreshBuilding(); });
+  document.getElementById("prev-building").addEventListener("click", () => setBuilding(buildingIndex - 1));
+  document.getElementById("next-building").addEventListener("click", () => setBuilding(buildingIndex + 1));
   document.getElementById("building-choice").addEventListener("click", () => {
     const menu = document.getElementById("building-menu"); const opening = menu.classList.contains("hidden");
     menu.classList.toggle("hidden", !opening); document.getElementById("building-choice").setAttribute("aria-expanded", String(opening));
@@ -471,7 +447,7 @@ function bindEvents() {
 
 async function boot() {
   db = await DataSource.load();
-  bindEvents(); renderFloors(); renderFloorHeading(); renderProfile(); refreshBuilding();
+  bindEvents(); renderBuildingMenu(); renderFloors(); renderFloorHeading(); renderProfile(); setBuilding(buildingIndex);
   selectView("3d");
   if (LISTINGS_ENDPOINT) setInterval(async () => { db = await DataSource.load(); renderRooms(); updateViewer(); }, 15000);
 }
