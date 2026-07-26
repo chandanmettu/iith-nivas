@@ -12,8 +12,11 @@ const STORAGE_KEY = "nivas-swap-v1";
    visible on the device that created it. */
 const API_BASE = window.NIVAS_API_BASE ?? "./api";
 
-/* Fallback for feature requests when the API is unreachable. */
-const FEEDBACK_TO = "ms24btech11021@iith.ac.in";
+/* Fallback for feature requests when the API is unreachable — the API itself
+   reads the real address from the gitignored api/config.php. Don't commit a
+   real address here; override with window.NIVAS_FEEDBACK_TO in your own
+   deployed index.html if you want the offline mailto: fallback to work too. */
+const FEEDBACK_TO = window.NIVAS_FEEDBACK_TO ?? "feedback@example.com";
 const FLOOR_COUNT = 9;
 const ROOMS_PER_FLOOR = 30;   /* pods of 8 / 8 / 6 / 8 — see roomShapes */
 /* Pods are 8 / 8 / 6 / 8, so room -> pod can't be arithmetic. */

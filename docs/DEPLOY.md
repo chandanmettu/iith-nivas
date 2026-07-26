@@ -34,7 +34,7 @@ Fill in:
 
 ## 3. Upload
 
-Everything except `docs/`, `tmp/` and `header.html` goes to `public_html/`:
+Everything except `docs/` and `tmp/` goes to `public_html/`:
 
 ```
 public_html/
@@ -62,6 +62,18 @@ the script loads:
 
 Set `window.NIVAS_API_BASE = ""` to force offline mode (listings save to the
 browser only) — useful for a demo.
+
+**Feedback address.** The feature-request form's real destination is
+`feedback_to` in `api/config.php` (server-side, gitignored — this is what
+actually delivers feedback). `app.js`'s `FEEDBACK_TO` is only the client-side
+`mailto:` fallback used when the API can't be reached at all; the committed
+source deliberately ships a placeholder so no real address sits in a public
+repo. If you want that offline fallback to point somewhere real too, set it
+the same way as the API base, in your own deployed copy — never commit it:
+
+```html
+<script>window.NIVAS_FEEDBACK_TO = "you@iith.ac.in";</script>
+```
 
 ## 5. GitHub
 

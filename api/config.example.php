@@ -32,7 +32,7 @@ return [
     'require_verification' => true,
 
     // Where feature requests and bug reports are delivered.
-    'feedback_to' => 'ms24btech11021@iith.ac.in',
+    'feedback_to' => 'you@iith.ac.in',
 
     // From: address for outgoing mail. Must be a mailbox on your own domain or
     // Hostinger will drop it. Create it in hPanel → Emails.
