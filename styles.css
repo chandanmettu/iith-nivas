@@ -473,7 +473,7 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 
 .move-details { padding: var(--s-5); border: 1px solid var(--line-soft); border-radius: var(--r-lg); background: var(--surface-sunk); }
 .preference-grid { display: grid; gap: var(--s-2); }
-.preference-row { display: grid; grid-template-columns: 28px minmax(0, 1.4fr) minmax(0, 1fr); align-items: center; gap: var(--s-3); }
+.preference-row { display: grid; grid-template-columns: 28px minmax(0, 1.3fr) minmax(0, .85fr) minmax(0, .85fr); align-items: center; gap: var(--s-3); }
 .preference-rank {
   display: grid;
   place-items: center;
@@ -805,6 +805,10 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   box-shadow: var(--e-3);
 }
 .building-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
   border: 0;
   border-radius: var(--r-sm);
   padding: var(--s-2) var(--s-3);
@@ -816,6 +820,14 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 }
 .building-option:hover { background: var(--brand-50); color: var(--brand-600); }
 .building-option.selected { background: var(--brand-600); color: #fff; }
+.building-option-count {
+  padding: 1px var(--s-2);
+  border-radius: var(--r-pill);
+  background: var(--status-match-tint);
+  color: #246145;
+  font: 700 var(--fs-micro) var(--font-mono);
+}
+.building-option.selected .building-option-count { background: rgba(255, 255, 255, .25); color: #fff; }
 .building-menu::-webkit-scrollbar { width: 7px; }
 .building-menu::-webkit-scrollbar-thumb { background: var(--line); border-radius: var(--r-pill); }
 
@@ -1712,21 +1724,23 @@ body { background: var(--canvas); }
   .form-grid > .span-3,
   .form-grid > .span-4,
   .form-grid > .span-6 { grid-column: 1 / -1; }
-  /* Each destination-preference row (rank + hostel select + pod select) was
-     squeezing a hostel name and a pod name into ~150px/~105px, truncating to
-     "Choo…"/"A…". Rank pairs with the hostel select on one line; pod select
-     gets its own full-width line below instead of a third sliver. */
+  /* Each destination-preference row (rank + hostel select + pod select + floor
+     select) was squeezing a hostel name and a pod name into ~150px/~105px,
+     truncating to "Choo…"/"A…". Rank pairs with the hostel select on one
+     line; pod and floor selects get their own full-width line below instead
+     of slivers. */
   .preference-row {
     grid-template-columns: 28px 1fr;
-    grid-template-areas: "rank hostel" "pod pod";
+    grid-template-areas: "rank hostel" "pod floor";
     row-gap: var(--s-2);
   }
   .preference-rank { grid-area: rank; }
   /* enhanceSelect() wraps each native <select> in a .select div, which is the
      actual grid item — targeting the (now hidden) <select> itself would do
      nothing visually. */
-  .preference-row > .select:first-of-type { grid-area: hostel; }
-  .preference-row > .select:last-of-type { grid-area: pod; }
+  .preference-row > .select:nth-of-type(1) { grid-area: hostel; }
+  .preference-row > .select:nth-of-type(2) { grid-area: pod; }
+  .preference-row > .select:nth-of-type(3) { grid-area: floor; }
   .form-actions { flex-direction: column-reverse; align-items: stretch; }
   .form-actions .btn--primary { margin-left: 0; width: 100%; }
   .form-actions .btn--ghost { text-align: center; }

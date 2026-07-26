@@ -97,7 +97,9 @@ function sanitiseListing(entry) {
   const preferences = Array.isArray(entry.preferences) ? entry.preferences
     .map(preference => ({
       hostel: HOSTELS.includes(preference?.hostel) ? preference.hostel : "",
-      pod: [1, 2, 3, 4].includes(Number(preference?.pod)) ? Number(preference.pod) : null
+      pod: [1, 2, 3, 4].includes(Number(preference?.pod)) ? Number(preference.pod) : null,
+      floor: Number.isInteger(Number(preference?.floor)) && Number(preference?.floor) >= 1 && Number(preference?.floor) <= FLOOR_COUNT
+        ? Number(preference.floor) : null
     }))
     .filter(preference => preference.hostel) : [];
   /* Contact is present only when that student ticked the consent box; the API
@@ -330,10 +332,14 @@ function listingMatchesYou(listing) {
   if (!listing) return false;
   if (!own) return DEMO_MODE && listing.demoMatch;
   if (listing.hostel === own.hostel && listing.room === own.room || !listing.willingToMove) return false;
-  const ownPod = roomMeta(own.room)?.pod;
-  const listingPod = roomMeta(listing.room)?.pod;
-  const theyWantUs = listing.preferences.some(preference => preference.hostel === own.hostel && (!preference.pod || preference.pod === ownPod));
-  const weWantThem = own.preferences.some(preference => preference.hostel === listing.hostel && (!preference.pod || preference.pod === listingPod));
+  const ownMeta = roomMeta(own.room);
+  const listingMeta = roomMeta(listing.room);
+  const theyWantUs = listing.preferences.some(preference => preference.hostel === own.hostel
+    && (!preference.pod || preference.pod === ownMeta?.pod)
+    && (!preference.floor || preference.floor === ownMeta?.floor));
+  const weWantThem = own.preferences.some(preference => preference.hostel === listing.hostel
+    && (!preference.pod || preference.pod === listingMeta?.pod)
+    && (!preference.floor || preference.floor === listingMeta?.floor));
   return theyWantUs && weWantThem;
 }
 function statusAtFor(hostel, room) {
@@ -459,6 +465,12 @@ function fillPodSelect(select) {
     .map(pod => `<option value="${pod}">Pod ${pod} · rooms ${podRange(pod)}</option>`).join("")}`;
   if ([...select.options].some(option => option.value === selected)) select.value = selected;
 }
+function fillFloorSelect(select) {
+  const selected = select.value;
+  select.innerHTML = `<option value="">Any floor</option>${Array.from({ length: FLOOR_COUNT }, (_, i) => i + 1)
+    .map(floor => `<option value="${floor}">Floor ${String(floor).padStart(2, "0")}</option>`).join("")}`;
+  if ([...select.options].some(option => option.value === selected)) select.value = selected;
+}
 function renderProfile() {
   renderBookmarkBadge();
   /* One button, one meaning: it creates the listing, then maintains it. */
@@ -479,6 +491,7 @@ function openProfile() {
     if (select.name !== "hostel") fillHostelSelect(select, true);
   });
   form.querySelectorAll('[name$="Pod"]').forEach(fillPodSelect);
+  form.querySelectorAll('[name$="Floor"]').forEach(fillFloorSelect);
   form.reset();
   if (state.profile) {
     const profile = state.profile;
@@ -491,6 +504,7 @@ function openProfile() {
     profile.preferences.forEach((preference, index) => {
       form.elements[`preference${index + 1}Hostel`].value = preference.hostel;
       form.elements[`preference${index + 1}Pod`].value = preference.pod || "";
+      form.elements[`preference${index + 1}Floor`].value = preference.floor || "";
     });
   }
   setMoveDetails(form.elements.willingToMove.value === "yes");
@@ -585,8 +599,11 @@ function renderRooms() {
    ranked choices, so it is never blank once they've registered. */
 function preferenceList(preferences) {
   if (!preferences.length) return "";
-  return `<ol class="choice-list">${preferences.map(preference =>
-    `<li><span>${escapeHtml(preference.hostel)}</span><small>${preference.pod ? `Pod ${preference.pod}` : "Any pod"}</small></li>`).join("")}</ol>`;
+  return `<ol class="choice-list">${preferences.map(preference => {
+    const pod = preference.pod ? `Pod ${preference.pod}` : "Any pod";
+    const floor = preference.floor ? `Floor ${String(preference.floor).padStart(2, "0")}` : "Any floor";
+    return `<li><span>${escapeHtml(preference.hostel)}</span><small>${pod} · ${floor}</small></li>`;
+  }).join("")}</ol>`;
 }
 /* The column is a stack of cards, not one long tinted strip: an identity card
    carrying the status colour, then the ranked choices as their own card. */
@@ -727,6 +744,7 @@ function updateSummary() {
   /* Campus-wide, not scoped to the selected hostel — activeListings() already
      covers every hostel, so this is just its unfiltered length. */
   document.getElementById("campus-listed-count").textContent = listings.length;
+  renderBuildingMenu();
 }
 
 function openActivity(hostel = currentBuilding(), ownHostel = ownListing()?.hostel) {
@@ -763,7 +781,13 @@ function setBuilding(index) {
 }
 function renderBuildingMenu() {
   const menu = document.getElementById("building-menu");
-  menu.innerHTML = db.hostels.map((name, index) => `<button class="building-option ${index === buildingIndex ? "selected" : ""}" data-building-index="${index}" role="option" aria-selected="${index === buildingIndex}">${escapeHtml(name)}</button>`).join("");
+  const listings = activeListings();
+  menu.innerHTML = db.hostels.map((name, index) => {
+    const count = listings.filter(listing => listing.hostel === name).length;
+    return `<button class="building-option ${index === buildingIndex ? "selected" : ""}" data-building-index="${index}" role="option" aria-selected="${index === buildingIndex}">
+        <span>${escapeHtml(name)}</span>${count ? `<b class="building-option-count">${count}</b>` : ""}
+      </button>`;
+  }).join("");
   menu.querySelectorAll(".building-option").forEach(option => option.addEventListener("click", () => { setBuilding(Number(option.dataset.buildingIndex)); closeBuildingMenu(); }));
 }
 function closeBuildingMenu() {
@@ -981,7 +1005,8 @@ function bindEvents() {
     const preferences = willingToMove
       ? [1, 2, 3].map(index => ({
           hostel: form.elements[`preference${index}Hostel`].value,
-          pod: Number(form.elements[`preference${index}Pod`].value) || null
+          pod: Number(form.elements[`preference${index}Pod`].value) || null,
+          floor: Number(form.elements[`preference${index}Floor`].value) || null
         })).filter(preference => preference.hostel)
       : [];
     const draft = sanitiseLocalProfile({

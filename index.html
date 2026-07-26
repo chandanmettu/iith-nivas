@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
     <!-- Bump ?v= on every CSS/JS change — shared hosting CDNs serve stale assets otherwise. -->
-    <link rel="stylesheet" href="./styles.css?v=42" />
+    <link rel="stylesheet" href="./styles.css?v=43" />
   </head>
   <body>
     <!-- Layout: a header pill, a headline row with the hostel's live counts on
@@ -243,12 +243,12 @@
           <div class="move-details hidden" id="move-details">
             <div class="section-head">
               <h3>Where would you like to move?</h3>
-              <p>Up to three choices, in order of preference. A pod is optional.</p>
+              <p>Up to three choices, in order of preference. Pod and floor are both optional.</p>
             </div>
             <div class="preference-grid">
-              <div class="preference-row"><span class="preference-rank">1</span><select name="preference1Hostel" aria-label="First-choice hostel"></select><select name="preference1Pod" aria-label="First-choice pod"></select></div>
-              <div class="preference-row"><span class="preference-rank">2</span><select name="preference2Hostel" aria-label="Second-choice hostel"></select><select name="preference2Pod" aria-label="Second-choice pod"></select></div>
-              <div class="preference-row"><span class="preference-rank">3</span><select name="preference3Hostel" aria-label="Third-choice hostel"></select><select name="preference3Pod" aria-label="Third-choice pod"></select></div>
+              <div class="preference-row"><span class="preference-rank">1</span><select name="preference1Hostel" aria-label="First-choice hostel"></select><select name="preference1Pod" aria-label="First-choice pod"></select><select name="preference1Floor" aria-label="First-choice floor"></select></div>
+              <div class="preference-row"><span class="preference-rank">2</span><select name="preference2Hostel" aria-label="Second-choice hostel"></select><select name="preference2Pod" aria-label="Second-choice pod"></select><select name="preference2Floor" aria-label="Second-choice floor"></select></div>
+              <div class="preference-row"><span class="preference-rank">3</span><select name="preference3Hostel" aria-label="Third-choice hostel"></select><select name="preference3Pod" aria-label="Third-choice pod"></select><select name="preference3Floor" aria-label="Third-choice floor"></select></div>
             </div>
           </div>
 
@@ -352,7 +352,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./app.js?v=30"></script>
+    <script src="./app.js?v=31"></script>
     <script type="module" src="./viewer3d.js?v=12"></script>
   </body>
 </html>

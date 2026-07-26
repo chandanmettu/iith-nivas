@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS nivas_preferences (
   rank_order  TINYINT UNSIGNED NOT NULL,
   hostel      VARCHAR(64)  NOT NULL,
   pod         TINYINT UNSIGNED NULL,
+  floor       TINYINT UNSIGNED NULL,        -- null = any floor in that pod
   PRIMARY KEY (id),
   KEY idx_listing (listing_id),
   CONSTRAINT fk_pref_listing FOREIGN KEY (listing_id)

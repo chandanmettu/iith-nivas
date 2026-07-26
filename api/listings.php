@@ -27,10 +27,11 @@ if ($method === 'GET') {
     )->fetchAll();
 
     $preferences = [];
-    foreach ($db->query('SELECT listing_id, rank_order, hostel, pod FROM nivas_preferences ORDER BY rank_order')->fetchAll() as $pref) {
+    foreach ($db->query('SELECT listing_id, rank_order, hostel, pod, floor FROM nivas_preferences ORDER BY rank_order')->fetchAll() as $pref) {
         $preferences[(int) $pref['listing_id']][] = [
             'hostel' => $pref['hostel'],
             'pod'    => $pref['pod'] === null ? null : (int) $pref['pod'],
+            'floor'  => $pref['floor'] === null ? null : (int) $pref['floor'],
         ];
     }
 
@@ -124,13 +125,18 @@ try {
     $listingId = (int) $db->lastInsertId();
 
     $preferences = is_array($body['preferences'] ?? null) ? array_slice($body['preferences'], 0, 3) : [];
-    $insert = $db->prepare('INSERT INTO nivas_preferences (listing_id, rank_order, hostel, pod) VALUES (?, ?, ?, ?)');
+    $insert = $db->prepare('INSERT INTO nivas_preferences (listing_id, rank_order, hostel, pod, floor) VALUES (?, ?, ?, ?, ?)');
     $rank = 0;
     foreach ($preferences as $preference) {
         $prefHostel = nivas_hostel(is_array($preference) ? ($preference['hostel'] ?? '') : '');
         if ($prefHostel === '') continue;
-        $pod = isset($preference['pod']) ? (int) $preference['pod'] : 0;
-        $insert->execute([$listingId, ++$rank, $prefHostel, ($pod >= 1 && $pod <= 4) ? $pod : null]);
+        $pod   = isset($preference['pod']) ? (int) $preference['pod'] : 0;
+        $floor = isset($preference['floor']) ? (int) $preference['floor'] : 0;
+        $insert->execute([
+            $listingId, ++$rank, $prefHostel,
+            ($pod >= 1 && $pod <= 4) ? $pod : null,
+            ($floor >= 1 && $floor <= NIVAS_FLOOR_COUNT) ? $floor : null,
+        ]);
     }
     $db->commit();
 } catch (Throwable $e) {
