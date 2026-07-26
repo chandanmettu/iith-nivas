@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
     <!-- Bump ?v= on every CSS/JS change — shared hosting CDNs serve stale assets otherwise. -->
-    <link rel="stylesheet" href="./styles.css?v=39" />
+    <link rel="stylesheet" href="./styles.css?v=40" />
   </head>
   <body>
     <!-- Layout: a header pill, a headline row with the hostel's live counts on
@@ -28,21 +28,23 @@
               <span class="brand-mark"><i></i><i></i><i></i></span>
               <span>NIVAS<small>IIT HYDERABAD</small></span>
             </a>
-            <div class="topbar-tag">
-              <span>STUDENT ROOM SWAP</span>
-              <small>16 hostels · 9 floors · 30 rooms per floor</small>
-            </div>
 
             <!-- Campus-wide total, not per-hostel — always visible regardless
                  of which hostel is selected below. Updated by the same
                  updateSummary() that drives the per-hostel head-stats. -->
             <div class="campus-stat" aria-label="Total listings across all hostels" title="Total room listings across every hostel">
+              <i class="live-dot"></i>
               <strong id="campus-listed-count">0</strong><small>listed campus-wide</small>
+            </div>
+
+            <div class="topbar-tag">
+              <span>STUDENT ROOM SWAP</span>
+              <small>15 hostels · 9 floors · 30 rooms per floor</small>
             </div>
           </div>
 
           <div class="topbar-actions">
-            <button class="btn btn--ghost" id="open-bookmarks">Saved <b class="count-badge" id="bookmark-badge">0</b></button>
+            <button class="btn btn--ghost" id="open-bookmarks">My Bookmarks <b class="count-badge" id="bookmark-badge">0</b></button>
             <button class="btn btn--outline" id="open-feedback">Feature request</button>
             <!-- One entry point to the listing form. The old nav tab did exactly
                  the same thing as this button, so it's gone. -->
@@ -349,7 +351,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./app.js?v=28"></script>
+    <script src="./app.js?v=29"></script>
     <script type="module" src="./viewer3d.js?v=12"></script>
   </body>
 </html>

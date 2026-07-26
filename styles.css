@@ -600,17 +600,35 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .topbar-tag small { color: var(--ink-500); font-size: var(--fs-xs); }
 
 /* Campus-wide total, always visible — distinct from .head-stat, which is
-   scoped to whichever hostel is currently selected below. */
+   scoped to whichever hostel is currently selected below. Styled as a live
+   pill (pulsing dot) rather than plain text, so it reads as "updating now",
+   not a static label. */
 .campus-stat {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--s-2);
-  padding-left: var(--s-4);
-  border-left: 1px solid var(--brand-100);
+  padding: var(--s-2) var(--s-4);
+  border: 1px solid var(--status-match);
+  border-radius: var(--r-pill);
+  background: var(--status-match-tint);
   white-space: nowrap;
 }
-.campus-stat strong { font: 800 var(--fs-lg) var(--font-sans); line-height: 1; letter-spacing: -.02em; color: var(--ink-900); }
-.campus-stat small { color: var(--ink-500); font-size: var(--fs-xs); font-weight: 600; }
+.campus-stat strong { font: 800 var(--fs-lg) var(--font-sans); line-height: 1; letter-spacing: -.02em; color: #246145; }
+.campus-stat small { color: #246145; font-size: var(--fs-xs); font-weight: 600; }
+.live-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--r-pill);
+  background: var(--status-match);
+  box-shadow: 0 0 0 0 rgba(47, 145, 97, .5);
+  animation: live-pulse 2s ease-out infinite;
+}
+@keyframes live-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(47, 145, 97, .5); }
+  70%  { box-shadow: 0 0 0 7px rgba(47, 145, 97, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(47, 145, 97, 0); }
+}
 .topbar-actions { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--s-3); margin-left: auto; }
 .topbar-actions .btn { min-height: 44px; padding: 0 var(--s-5); border-radius: var(--r-pill); font-size: var(--fs-sm); }
 
@@ -1588,7 +1606,7 @@ body { background: var(--canvas); }
   .room-detail {
     border-left: 0;
     border-top: 1px solid var(--line);
-    max-height: 320px;
+    max-height: 65vh;
   }
   .page-head { align-items: flex-start; flex-direction: column; gap: var(--s-4); }
   .head-stats { width: 100%; gap: var(--s-8); }
@@ -1620,7 +1638,6 @@ body { background: var(--canvas); }
   .topbar { gap: var(--s-3); padding: var(--s-4); border-radius: var(--r-xl); flex-wrap: wrap; }
   .topbar-id { flex-wrap: wrap; gap: var(--s-3); }
   .topbar-tag { padding-left: 0; border-left: 0; }
-  .campus-stat { padding-left: 0; border-left: 0; }
   .topbar-actions { width: 100%; flex-direction: column; align-items: stretch; }
   .topbar-actions .btn { width: 100%; }
   .topbar:after { display: none; }

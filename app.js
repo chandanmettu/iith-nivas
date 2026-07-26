@@ -28,7 +28,7 @@ const DEMO_MODE = false;
 
 const HOSTELS = [
   "Aryabhatta", "Bhabha", "Bhaskara", "Brahmagupta", "Charaka", "Kalam",
-  "Kapila", "Kautilya", "Raman", "Ramanuja", "Ramanujan", "Sarabhai",
+  "Kapila", "Kautilya", "Raman", "Ramanujan", "Sarabhai",
   "Susruta", "Varahamihira", "Viswesvaraya", "Vyasa"
 ];
 

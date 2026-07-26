@@ -15,7 +15,7 @@ const NIVAS_ROOMS_PER_FLOOR = 30;   // pods of 8 / 8 / 6 / 8 — mirrors app.js
 
 const NIVAS_HOSTELS = [
     'Aryabhatta', 'Bhabha', 'Bhaskara', 'Brahmagupta', 'Charaka', 'Kalam',
-    'Kapila', 'Kautilya', 'Raman', 'Ramanuja', 'Ramanujan', 'Sarabhai',
+    'Kapila', 'Kautilya', 'Raman', 'Ramanujan', 'Sarabhai',
     'Susruta', 'Varahamihira', 'Viswesvaraya', 'Vyasa',
 ];
 
