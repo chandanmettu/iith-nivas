@@ -598,6 +598,19 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .topbar-tag { display: grid; gap: 3px; padding-left: var(--s-4); border-left: 1px solid var(--brand-100); }
 .topbar-tag span { font: var(--fs-micro) var(--font-mono); letter-spacing: var(--track-mono); color: var(--brand-600); }
 .topbar-tag small { color: var(--ink-500); font-size: var(--fs-xs); }
+
+/* Campus-wide total, always visible — distinct from .head-stat, which is
+   scoped to whichever hostel is currently selected below. */
+.campus-stat {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding-left: var(--s-4);
+  border-left: 1px solid var(--brand-100);
+  white-space: nowrap;
+}
+.campus-stat strong { font: 800 var(--fs-lg) var(--font-sans); line-height: 1; letter-spacing: -.02em; color: var(--ink-900); }
+.campus-stat small { color: var(--ink-500); font-size: var(--fs-xs); font-weight: 600; }
 .topbar-actions { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--s-3); margin-left: auto; }
 .topbar-actions .btn { min-height: 44px; padding: 0 var(--s-5); border-radius: var(--r-pill); font-size: var(--fs-sm); }
 
@@ -1607,6 +1620,7 @@ body { background: var(--canvas); }
   .topbar { gap: var(--s-3); padding: var(--s-4); border-radius: var(--r-xl); flex-wrap: wrap; }
   .topbar-id { flex-wrap: wrap; gap: var(--s-3); }
   .topbar-tag { padding-left: 0; border-left: 0; }
+  .campus-stat { padding-left: 0; border-left: 0; }
   .topbar-actions { width: 100%; flex-direction: column; align-items: stretch; }
   .topbar-actions .btn { width: 100%; }
   .topbar:after { display: none; }

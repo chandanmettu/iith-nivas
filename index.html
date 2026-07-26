@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
     <!-- Bump ?v= on every CSS/JS change — shared hosting CDNs serve stale assets otherwise. -->
-    <link rel="stylesheet" href="./styles.css?v=38" />
+    <link rel="stylesheet" href="./styles.css?v=39" />
   </head>
   <body>
     <!-- Layout: a header pill, a headline row with the hostel's live counts on
@@ -31,6 +31,13 @@
             <div class="topbar-tag">
               <span>STUDENT ROOM SWAP</span>
               <small>16 hostels · 9 floors · 30 rooms per floor</small>
+            </div>
+
+            <!-- Campus-wide total, not per-hostel — always visible regardless
+                 of which hostel is selected below. Updated by the same
+                 updateSummary() that drives the per-hostel head-stats. -->
+            <div class="campus-stat" aria-label="Total listings across all hostels" title="Total room listings across every hostel">
+              <strong id="campus-listed-count">0</strong><small>listed campus-wide</small>
             </div>
           </div>
 
@@ -342,7 +349,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./app.js?v=27"></script>
+    <script src="./app.js?v=28"></script>
     <script type="module" src="./viewer3d.js?v=12"></script>
   </body>
 </html>

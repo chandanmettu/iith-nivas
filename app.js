@@ -715,6 +715,9 @@ function updateSummary() {
   document.getElementById("rooms-count").textContent = here.length;
   document.getElementById("open-swap-count").textContent = openHere.length;
   document.getElementById("match-count").textContent = matches.length;
+  /* Campus-wide, not scoped to the selected hostel — activeListings() already
+     covers every hostel, so this is just its unfiltered length. */
+  document.getElementById("campus-listed-count").textContent = listings.length;
 }
 
 function openActivity(hostel = currentBuilding(), ownHostel = ownListing()?.hostel) {
