@@ -68,7 +68,7 @@
   --status-open-tint:      #fdf1d3;
   --status-match:          #2f9161;
   --status-match-tint:     #e0f1e7;
-  /* Pink: two or more students have bookmarked this room as a destination.
+  /* Pink: one or more students have bookmarked this room as a destination.
      Overlay tier, not a listing state — see statusAtFor() in app.js. */
   --status-waitlist:       #d6437e;
   --status-waitlist-tint:  #fbe1ec;

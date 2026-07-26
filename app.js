@@ -343,8 +343,10 @@ function statusAtFor(hostel, room) {
     if (listing.willingToMove) return "open";
   }
   /* Waitlist is an overlay for rooms nobody has claimed yet, not a listing
-     state — a match or an open swap is always more actionable to show. */
-  if (bookmarkCount(hostel, room) >= 2) return "waitlist";
+     state — a match or an open swap is always more actionable to show. Any
+     bookmark counts, including your own, so a saved room is visible on the
+     map right away, not just in "My Bookmarks". */
+  if (bookmarkCount(hostel, room) >= 1) return "waitlist";
   return listing ? "occupied" : "unlisted";
 }
 function statusAt(room) { return statusAtFor(currentBuilding(), room); }
@@ -603,6 +605,7 @@ function choiceCard(title, preferences) {
 }
 
 function resetPanel() {
+  selectedRoomId = null;
   document.querySelectorAll(".selected-room").forEach(room => room.classList.remove("selected-room"));
   const own = state.profile;
   const empty = document.querySelector(".panel-empty");
@@ -659,15 +662,21 @@ function bookmarkButton(hostel, room) {
 /* First come, first served: names are listed in the order they bookmarked. */
 function waitlistBlock(hostel, room) {
   const names = waitlistFor(hostel, room);
-  if (names.length < 2) return "";
+  if (!names.length) return "";
+  const note = names.length === 1
+    ? `${escapeHtml(names[0])} has bookmarked this room.`
+    : `First come, first served — ${escapeHtml(names[0])} bookmarked it first.`;
   return `<section class="waitlist-card">
-      <p class="choice-title">Waitlist for this room</p>
+      <p class="choice-title">${names.length === 1 ? "Interested in this room" : "Waitlist for this room"}</p>
       <ol class="waitlist-list">${names.map(name => `<li><span>${escapeHtml(name)}</span></li>`).join("")}</ol>
-      <p class="waitlist-note">First come, first served — ${escapeHtml(names[0])} bookmarked it first.</p>
+      <p class="waitlist-note">${note}</p>
     </section>`;
 }
 
+let selectedRoomId = null;
+
 function openRoom(id, element) {
+  selectedRoomId = id;
   document.querySelectorAll(".selected-room").forEach(room => room.classList.remove("selected-room"));
   element?.classList.add("selected-room");
   const status = statusAt(id);
@@ -915,11 +924,19 @@ async function requestCode(email) {
   }
 }
 
-/* Pull the board again and repaint everything that depends on it. */
+/* Pull the board again and repaint everything that depends on it. Keeps
+   whatever room the student has open — a background poll re-selecting the
+   default card out from under them every 20s was the actual bug behind
+   "it keeps falling back", not a timeout to tune. */
 async function refresh() {
+  const reopen = selectedRoomId;
   db = await DataSource.load();
   renderRooms();
-  resetPanel();
+  if (reopen && roomMeta(reopen)) {
+    openRoom(reopen, document.querySelector(`#room-layer [data-id="${reopen}"]`));
+  } else {
+    resetPanel();
+  }
   updateViewer();
   updateSummary();
 }

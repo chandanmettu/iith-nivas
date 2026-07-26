@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
     <!-- Bump ?v= on every CSS/JS change — shared hosting CDNs serve stale assets otherwise. -->
-    <link rel="stylesheet" href="./styles.css?v=40" />
+    <link rel="stylesheet" href="./styles.css?v=41" />
   </head>
   <body>
     <!-- Layout: a header pill, a headline row with the hostel's live counts on
@@ -88,7 +88,7 @@
               <span class="key-item" tabindex="0"><i class="occupied"></i><b>Registered</b><small role="tooltip">Resident listed it, isn’t moving</small></span>
               <span class="key-item" tabindex="0"><i class="open"></i><b>Open to swap</b><small role="tooltip">Resident wants to move</small></span>
               <span class="key-item" tabindex="0"><i class="match"></i><b>Match for you</b><small role="tooltip">You each want the other’s room</small></span>
-              <span class="key-item" tabindex="0"><i class="waitlist"></i><b>Waitlisted</b><small role="tooltip">2+ students have bookmarked this room</small></span>
+              <span class="key-item" tabindex="0"><i class="waitlist"></i><b>Waitlisted</b><small role="tooltip">One or more students have bookmarked this room</small></span>
             </div>
 
             <div class="segmented view-switch" role="group" aria-label="Map view">
@@ -351,7 +351,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./app.js?v=29"></script>
+    <script src="./app.js?v=30"></script>
     <script type="module" src="./viewer3d.js?v=12"></script>
   </body>
 </html>
