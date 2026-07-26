@@ -1000,6 +1000,13 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   color: var(--ink-400);
   font-size: var(--fs-micro);
 }
+.site-footer {
+  margin: var(--s-2) var(--s-1) 0;
+  text-align: right;
+  color: var(--ink-400);
+  font-size: var(--fs-micro);
+}
+.footer-heart { color: var(--status-waitlist); }
 
 /* ── 08 Views ────────────────────────────────────────────────────────────── */
 
@@ -1724,6 +1731,7 @@ body { background: var(--canvas); }
   .form-actions .btn--primary { margin-left: 0; width: 100%; }
   .form-actions .btn--ghost { text-align: center; }
   .privacy-note { text-align: left; }
+  .site-footer { text-align: left; }
   .site-card, .map-card { right: var(--s-3); top: 58px; width: 168px; padding: var(--s-3); }
   .floor-canvas { padding: var(--s-3); }
   .friend-city-hud { left: var(--s-3); bottom: var(--s-3); width: 224px; }
