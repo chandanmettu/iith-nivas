@@ -6,19 +6,22 @@
    ========================================================================== */
 
 const STORAGE_KEY = "nivas-swap-v1";
-const LISTINGS_ENDPOINT = window.NIVAS_LISTINGS_ENDPOINT || "";
-/* Where feature requests and bug reports go. With no backend the form opens
-   the student's mail client pre-filled; point NIVAS_FEEDBACK_ENDPOINT at a
-   Google Apps Script (same pattern as the listings feed) to collect them
-   silently instead. */
+
+/* The shared board. Point this at the PHP API (see api/ and docs/DEPLOY.md).
+   Empty string = offline mode: the app still works, but a listing is only ever
+   visible on the device that created it. */
+const API_BASE = window.NIVAS_API_BASE ?? "./api";
+
+/* Fallback for feature requests when the API is unreachable. */
 const FEEDBACK_TO = "ms24btech11021@iith.ac.in";
-const FEEDBACK_ENDPOINT = window.NIVAS_FEEDBACK_ENDPOINT || "";
 const FLOOR_COUNT = 9;
 const ROOMS_PER_FLOOR = 30;   /* pods of 8 / 8 / 6 / 8 — see roomShapes */
 /* Pods are 8 / 8 / 6 / 8, so room -> pod can't be arithmetic. */
 const POD_SIZES = [8, 8, 6, 8];
 const POD_OF_ROOM = POD_SIZES.flatMap((size, index) => Array(size).fill(index + 1));
-const DEMO_MODE = true;
+/* MUST stay false in anything a student can reach: these are invented rooms
+   and would be indistinguishable from real listings. */
+const DEMO_MODE = false;
 
 const HOSTELS = [
   "Aryabhatta", "Bhabha", "Bhaskara", "Brahmagupta", "Charaka", "Kalam",
@@ -39,24 +42,47 @@ const DEMO_LISTINGS = [
   preferences: willingToMove ? [{ hostel: ["Kalam", "Ramanujan", "Sarabhai"][index % 3], pod: (index % 4) + 1 }] : []
 }));
 
-/* ── Data source ─────────────────────────────────────────────────────────── */
+/* ── API ─────────────────────────────────────────────────────────────────
+   Every network call goes through here. Each one degrades to offline rather
+   than throwing at the UI: a dead API must never make the map unusable. */
+
+async function api(path, body) {
+  if (!API_BASE) throw new Error("offline");
+  const response = await fetch(`${API_BASE}/${path}`, {
+    method: body ? "POST" : "GET",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+    cache: "no-store"
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload.ok !== true) {
+    const error = new Error(payload.error || `Request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
+  }
+  return payload;
+}
 
 const DataSource = {
   async load() {
     const data = {
       hostels: HOSTELS,
       podHostels: [],
-      listings: DEMO_MODE ? DEMO_LISTINGS : []
+      listings: DEMO_MODE ? DEMO_LISTINGS : [],
+      bookmarkCounts: {}
     };
-    if (!LISTINGS_ENDPOINT) return data;
-
+    if (!API_BASE) return data;
     try {
-      const response = await fetch(LISTINGS_ENDPOINT, { cache: "no-store" });
-      if (!response.ok) throw new Error(`Listings request failed: ${response.status}`);
-      const remote = await response.json();
-      data.listings = Array.isArray(remote.listings) ? remote.listings.map(sanitiseListing).filter(Boolean) : [];
+      const remote = await api("listings.php");
+      data.listings = Array.isArray(remote.listings)
+        ? remote.listings.map(sanitiseListing).filter(Boolean) : [];
+      data.bookmarkCounts = remote.bookmarkCounts || {};
+      state.online = true;
     } catch (error) {
-      console.warn("Nivas could not refresh listings.", error);
+      console.warn("Nivas could not reach the board.", error);
+      state.online = false;
+      /* Keep showing the student their own listing so the page isn't a lie. */
+      if (state.profile) data.listings = [state.profile];
     }
     return data;
   }
@@ -70,17 +96,24 @@ function sanitiseListing(entry) {
       pod: [1, 2, 3, 4].includes(Number(preference?.pod)) ? Number(preference.pod) : null
     }))
     .filter(preference => preference.hostel) : [];
+  /* Contact is present only when that student ticked the consent box; the API
+     omits it otherwise, and we never invent it. */
+  const shareContact = Boolean(entry.shareContact);
   return {
     id: String(entry.id || `${entry.hostel}-${entry.room}`),
     hostel: entry.hostel,
     room: normaliseRoom(entry.room),
     willingToMove: Boolean(entry.willingToMove),
     demoMatch: DEMO_MODE && Boolean(entry.demoMatch),
+    shareContact,
+    name: shareContact && entry.name ? String(entry.name).slice(0, 64) : "",
+    phone: shareContact && entry.phone ? String(entry.phone).slice(0, 24) : "",
+    note: entry.note ? String(entry.note).slice(0, 280) : "",
     preferences
   };
 }
 
-let db = { hostels: [], podHostels: [], listings: [] };
+let db = { hostels: [], podHostels: [], listings: [], bookmarkCounts: {} };
 
 /* ── Room geometry ───────────────────────────────────────────────────────── */
 
@@ -141,22 +174,42 @@ const voidShapes = [
 
 /* ── Local state ─────────────────────────────────────────────────────────── */
 
-function loadState() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved?.profile) return { profile: sanitiseLocalProfile(saved.profile) };
-  } catch { /* Start fresh when storage is missing or malformed. */ }
-  return { profile: null };
+/* What this browser keeps: the student's own listing (so the page is useful
+   before the network answers), the token proving they own their email, an
+   anonymous token for bookmarks, and their bookmarks. Nothing about anyone
+   else is ever cached here. */
+function newToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return [...bytes].map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function loadState() {
+  const base = { profile: null, ownerToken: "", email: "", deviceToken: "", bookmarks: [], online: false };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    base.profile     = saved.profile ? sanitiseLocalProfile(saved.profile) : null;
+    base.ownerToken  = typeof saved.ownerToken === "string" ? saved.ownerToken : "";
+    base.email       = typeof saved.email === "string" ? saved.email : "";
+    base.deviceToken = typeof saved.deviceToken === "string" ? saved.deviceToken : "";
+    base.bookmarks   = Array.isArray(saved.bookmarks) ? saved.bookmarks : [];
+  } catch { /* Start fresh when storage is missing or malformed. */ }
+  if (!base.deviceToken) base.deviceToken = newToken();
+  return base;
+}
+
+/* The local copy keeps the fields the API strips from other people's
+   listings, because for your own listing you are allowed to see them. */
 function sanitiseLocalProfile(profile) {
-  const listing = sanitiseListing(profile);
-  if (!listing || !profile.name || !profile.email || !profile.phone) return null;
+  if (!profile || !HOSTELS.includes(profile.hostel) || !normaliseRoom(profile.room)) return null;
+  if (!profile.name || !profile.email) return null;
+  const listing = sanitiseListing({ ...profile, shareContact: true });
+  if (!listing) return null;
   return {
     ...listing,
+    shareContact: Boolean(profile.shareContact),
     name: String(profile.name).trim(),
     email: String(profile.email).trim(),
-    phone: String(profile.phone).trim()
+    phone: String(profile.phone || "").trim()
   };
 }
 
@@ -165,7 +218,53 @@ let buildingIndex = HOSTELS.indexOf("Bhabha");
 let activeFloor = FLOOR_COUNT;
 
 function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ profile: state.profile }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    profile: state.profile,
+    ownerToken: state.ownerToken,
+    email: state.email,
+    deviceToken: state.deviceToken,
+    bookmarks: state.bookmarks
+  }));
+}
+
+/* ── Bookmarks ───────────────────────────────────────────────────────────── */
+
+function bookmarkKey(hostel, room) { return `${hostel}-${room}`; }
+function isBookmarked(hostel, room) {
+  return state.bookmarks.some(mark => mark.hostel === hostel && mark.room === room);
+}
+function bookmarkCount(hostel, room) {
+  return db.bookmarkCounts?.[bookmarkKey(hostel, room)] || 0;
+}
+
+async function toggleBookmark(hostel, room) {
+  const on = !isBookmarked(hostel, room);
+  /* Optimistic: the map updates now, the server catches up. */
+  state.bookmarks = on
+    ? [{ hostel, room }, ...state.bookmarks]
+    : state.bookmarks.filter(mark => !(mark.hostel === hostel && mark.room === room));
+  db.bookmarkCounts[bookmarkKey(hostel, room)] = Math.max(0, bookmarkCount(hostel, room) + (on ? 1 : -1));
+  persist();
+  renderRooms();
+  showToast(on ? `Room ${room} bookmarked.` : `Removed room ${room} from bookmarks.`);
+  try {
+    const result = await api("bookmarks.php", { deviceToken: state.deviceToken, hostel, room, on });
+    state.bookmarks = result.bookmarks || state.bookmarks;
+    db.bookmarkCounts = result.counts || db.bookmarkCounts;
+    persist();
+    renderRooms();
+  } catch (error) {
+    console.warn("Bookmark did not sync.", error);
+  }
+}
+
+async function syncBookmarks() {
+  try {
+    const result = await api("bookmarks.php", { deviceToken: state.deviceToken });
+    state.bookmarks = result.bookmarks || [];
+    db.bookmarkCounts = result.counts || db.bookmarkCounts;
+    persist();
+  } catch { /* Offline: the local list stands. */ }
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
@@ -329,6 +428,7 @@ function fillPodSelect(select) {
   if ([...select.options].some(option => option.value === selected)) select.value = selected;
 }
 function renderProfile() {
+  renderBookmarkBadge();
   /* One button, one meaning: it creates the listing, then maintains it. */
   document.getElementById("hero-create-listing").innerHTML =
     `${state.profile ? "Update my swap listing" : "Create my swap listing"} <b>→</b>`;
@@ -499,30 +599,64 @@ function resetPanel() {
   detail.querySelector(".panel-edit").addEventListener("click", openProfile);
 }
 
+function contactBlock(listing) {
+  if (!listing || !listing.willingToMove && !listing.shareContact) return "";
+  if (!listing.shareContact) {
+    return `<p class="contact-none">This student hasn't shared contact details. Their room still shows as ${listing.willingToMove ? "open to swap" : "registered"}.</p>`;
+  }
+  const digits = listing.phone.replace(/\D/g, "");
+  const wa = digits.length >= 10 ? `https://wa.me/${digits.length === 10 ? "91" + digits : digits}` : "";
+  return `<div class="contact-card">
+      <p class="choice-title">Contact</p>
+      <strong>${escapeHtml(listing.name)}</strong>
+      <span>${escapeHtml(listing.phone)}</span>
+      <div class="contact-actions">
+        ${wa ? `<a class="btn btn--primary btn--block" href="${wa}" target="_blank" rel="noopener noreferrer">Message on WhatsApp</a>` : ""}
+        <a class="btn btn--secondary btn--block" href="tel:${escapeHtml(listing.phone)}">Call</a>
+      </div>
+      <small class="contact-note">Shared by this student. Keep it to room swaps.</small>
+    </div>`;
+}
+
+function bookmarkButton(hostel, room) {
+  const on = isBookmarked(hostel, room);
+  const count = bookmarkCount(hostel, room);
+  return `<button class="bookmark-btn ${on ? "is-on" : ""}" type="button" data-bookmark="${escapeHtml(room)}"
+      aria-pressed="${on}" title="${on ? "Remove bookmark" : "Bookmark this room"}">
+      <span>${on ? "★" : "☆"}</span>${on ? "Saved" : "Save"}${count ? `<b>${count}</b>` : ""}
+    </button>`;
+}
+
 function openRoom(id, element) {
   document.querySelectorAll(".selected-room").forEach(room => room.classList.remove("selected-room"));
   element?.classList.add("selected-room");
   const status = statusAt(id);
   document.querySelector(".panel-empty").classList.add("hidden");
   const detail = document.getElementById("panel-detail");
-  const listing = listingAt(currentBuilding(), id);
+  const hostel = currentBuilding();
+  const listing = listingAt(hostel, id);
   const meta = roomMeta(id);
-  const isOwnRoom = Boolean(state.profile && state.profile.hostel === currentBuilding() && state.profile.room === id);
+  const isOwnRoom = Boolean(state.profile && state.profile.hostel === hostel && state.profile.room === id);
   detail.classList.remove("hidden");
   detail.innerHTML = `
     <section class="detail-card detail-card--${status}">
       <div class="detail-head">
-        <div><p>${isOwnRoom ? "YOUR LISTING" : "ROOM DETAIL"}</p><h3>${escapeHtml(currentBuilding())} · ${escapeHtml(id)}</h3></div>
+        <div><p>${isOwnRoom ? "YOUR LISTING" : "ROOM DETAIL"}</p><h3>${escapeHtml(hostel)} · ${escapeHtml(id)}</h3></div>
         <span class="pill pill--${status}">${STATUS_LABELS[status]}</span>
         <button class="icon-btn close-panel" aria-label="Close room details">×</button>
       </div>
       ${statCells(id, meta)}
-      <div class="resident-card"><div class="avatar avatar--lg avatar--private">${isOwnRoom ? initials(state.profile.name) : "••"}</div><div><strong>${isOwnRoom ? "Your listing" : listing ? "Student listing" : "No listing for this room"}</strong><small>${listing ? (listing.willingToMove ? "This student is open to a swap." : "Registered, not seeking a move.") : "Nivas has no published information for this room."}</small></div></div>
+      ${bookmarkButton(hostel, id)}
+      <div class="resident-card"><div class="avatar avatar--lg avatar--private">${isOwnRoom ? initials(state.profile.name) : listing?.shareContact ? initials(listing.name) : "••"}</div><div><strong>${isOwnRoom ? "Your listing" : listing ? (listing.shareContact ? escapeHtml(listing.name) : "Student listing") : "No listing for this room"}</strong><small>${listing ? (listing.willingToMove ? "This student is open to a swap." : "Registered, not seeking a move.") : "Nobody has posted about this room yet."}</small></div></div>
     </section>
+    ${listing && !isOwnRoom ? contactBlock(listing) : ""}
     ${listing?.willingToMove ? choiceCard(isOwnRoom ? "Your top choices" : "Wants to move to", listing.preferences) : ""}
     ${isOwnRoom ? '<button class="btn btn--secondary btn--block panel-edit" type="button">Edit my listing</button>' : ""}`;
   detail.querySelector(".close-panel").addEventListener("click", resetPanel);
   detail.querySelector(".panel-edit")?.addEventListener("click", openProfile);
+  detail.querySelector("[data-bookmark]")?.addEventListener("click", () => {
+    toggleBookmark(hostel, id).then(() => openRoom(id, element));
+  });
 }
 
 function roomStatusMapFor(hostel) {
@@ -610,20 +744,20 @@ function openFeedback() {
     form.elements.email.value = state.profile.email;
   }
   form.querySelectorAll("select").forEach(enhanceSelect);
-  document.getElementById("feedback-note").textContent = FEEDBACK_ENDPOINT
-    ? "Sent straight to the maintainer."
-    : "Opens your mail app with this filled in.";
+  document.getElementById("feedback-note").textContent = state.online
+    ? "Goes straight to the maintainer."
+    : "No connection — this will open your mail app instead.";
   setModal("feedback-modal", true);
 }
 
 async function sendFeedback(report) {
-  if (FEEDBACK_ENDPOINT) {
-    await fetch(FEEDBACK_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(report)
-    });
-    return "Thanks — your report has been sent.";
+  if (API_BASE) {
+    try {
+      await api("feedback.php", report);
+      return "Thanks — that's been sent.";
+    } catch (error) {
+      console.warn("Feedback API unavailable, falling back to mail.", error);
+    }
   }
   /* No backend yet: hand the whole thing to the student's mail client. */
   const body = [
@@ -640,11 +774,118 @@ async function sendFeedback(report) {
   return "Your mail app should be opening — send it and it reaches us.";
 }
 
+/* ── Saved rooms ─────────────────────────────────────────────────────────── */
+
+function renderBookmarkBadge() {
+  const badge = document.getElementById("bookmark-badge");
+  badge.textContent = state.bookmarks.length;
+  badge.classList.toggle("hidden", state.bookmarks.length === 0);
+}
+
+function openBookmarks() {
+  const list = document.getElementById("bookmarks-list");
+  if (!state.bookmarks.length) {
+    list.innerHTML = `<p class="bookmarks-empty">No saved rooms yet. Open any room and press <b>Save</b> — it works across every hostel, and it's separate from your three swap preferences.</p>`;
+  } else {
+    list.innerHTML = `<div class="bookmark-list">${state.bookmarks.map(mark => {
+      const listing = listingAt(mark.hostel, mark.room);
+      const status = statusAtFor(mark.hostel, mark.room);
+      const meta = roomMeta(mark.room);
+      return `<button class="bookmark-row" data-hostel="${escapeHtml(mark.hostel)}" data-room="${escapeHtml(mark.room)}">
+          <span class="bookmark-dot bookmark-dot--${status}"></span>
+          <span class="bookmark-copy">
+            <strong>${escapeHtml(mark.hostel)} · ${escapeHtml(mark.room)}</strong>
+            <small>Floor ${String(meta.floor).padStart(2, "0")} · Pod ${meta.pod} · ${STATUS_LABELS[status]}${
+              listing?.shareContact ? ` · ${escapeHtml(listing.name)}` : ""}</small>
+          </span>
+          <span class="bookmark-go">Open →</span>
+        </button>`;
+    }).join("")}</div>`;
+    list.querySelectorAll(".bookmark-row").forEach(row => row.addEventListener("click", () => {
+      closeAllModals();
+      setBuilding(db.hostels.indexOf(row.dataset.hostel));
+      activeFloor = roomMeta(row.dataset.room).floor;
+      show3DAll = false;
+      selectView("floor");
+      renderFloorRail();
+      renderRooms();
+      openRoom(row.dataset.room, document.querySelector(`#room-layer [data-id="${row.dataset.room}"]`));
+    }));
+  }
+  setModal("bookmarks-modal", true);
+}
+
+/* ── Publishing ──────────────────────────────────────────────────────────
+   One listing goes to the shared board. If the server says the email has not
+   proved itself yet, we hold the draft, send a code, and finish the save once
+   the student types it back. */
+
+let pendingListing = null;
+
+async function publishListing(draft, alreadyVerified = false) {
+  if (!API_BASE) {
+    state.profile = draft; persist();
+    closeAllModals(); renderProfile(); await refresh();
+    return showToast("Saved on this device — the shared board is not connected.");
+  }
+
+  try {
+    await api("listings.php", {
+      ownerToken: state.ownerToken,
+      email: draft.email,
+      name: draft.name,
+      phone: draft.phone,
+      hostel: draft.hostel,
+      room: draft.room,
+      shareContact: draft.shareContact,
+      willingToMove: draft.willingToMove,
+      preferences: draft.preferences
+    });
+    state.profile = draft;
+    state.email = draft.email;
+    persist();
+    closeAllModals();
+    renderProfile();
+    await refresh();
+    showToast(draft.shareContact
+      ? "Published. Your name and number are visible on your room."
+      : "Published. Your contact stays private.");
+  } catch (error) {
+    if (error.status === 401 && !alreadyVerified) {
+      pendingListing = draft;
+      return requestCode(draft.email);
+    }
+    showToast(error.message);
+  }
+}
+
+async function requestCode(email) {
+  try {
+    await api("verify.php", { step: "request", email });
+    document.getElementById("verify-email").textContent = email;
+    document.getElementById("verify-form").reset();
+    setModal("profile-modal", false);
+    setModal("verify-modal", true);
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+/* Pull the board again and repaint everything that depends on it. */
+async function refresh() {
+  db = await DataSource.load();
+  renderRooms();
+  resetPanel();
+  updateViewer();
+  updateSummary();
+}
+
 /* ── Event wiring ───────────────────────────────────────────────────────── */
 
 function bindEvents() {
   document.getElementById("hero-create-listing").addEventListener("click", openProfile);
   document.getElementById("open-feedback").addEventListener("click", openFeedback);
+  document.getElementById("open-bookmarks").addEventListener("click", openBookmarks);
   document.getElementById("feedback-form").addEventListener("submit", async event => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -672,22 +913,68 @@ function bindEvents() {
   document.getElementById("profile-form").addEventListener("change", event => {
     if (event.target.name === "willingToMove") setMoveDetails(event.target.value === "yes");
   });
-  document.getElementById("profile-form").addEventListener("submit", event => {
+  document.getElementById("profile-form").addEventListener("submit", async event => {
     event.preventDefault();
-    const form = event.currentTarget; const willingToMove = form.elements.willingToMove.value === "yes";
-    const preferences = willingToMove ? [1, 2, 3].map(index => ({ hostel: form.elements[`preference${index}Hostel`].value, pod: Number(form.elements[`preference${index}Pod`].value) || null })).filter(preference => preference.hostel) : [];
-    const profile = sanitiseLocalProfile({
-      id: "local-profile", name: form.elements.name.value, email: form.elements.email.value, phone: form.elements.phone.value,
-      hostel: form.elements.hostel.value, room: form.elements.room.value, willingToMove, preferences
+    const form = event.currentTarget;
+    const willingToMove = form.elements.willingToMove.value === "yes";
+    const preferences = willingToMove
+      ? [1, 2, 3].map(index => ({
+          hostel: form.elements[`preference${index}Hostel`].value,
+          pod: Number(form.elements[`preference${index}Pod`].value) || null
+        })).filter(preference => preference.hostel)
+      : [];
+    const draft = sanitiseLocalProfile({
+      id: "local-profile",
+      name: form.elements.name.value,
+      email: form.elements.email.value,
+      phone: form.elements.phone.value,
+      hostel: form.elements.hostel.value,
+      room: form.elements.room.value,
+      shareContact: form.elements.shareContact.checked,
+      willingToMove,
+      preferences
     });
-    if (!profile) return showToast("Use a room number like 912 and complete every required field.");
-    state.profile = profile; persist(); closeAllModals(); renderProfile(); renderRooms(); resetPanel(); updateViewer();
-    showToast("Your room listing has been updated.");
+    if (!draft) return showToast("Use a room number like 912 and complete every required field.");
+    if (draft.shareContact && !draft.phone) return showToast("Add a phone number, or untick sharing your contact.");
+    await publishListing(draft);
   });
-  document.getElementById("delete-listing").addEventListener("click", () => {
-    state.profile = null; persist(); closeAllModals(); renderProfile(); renderRooms(); resetPanel(); updateViewer();
-    showToast("Your listing has been removed from this device.");
+
+  document.getElementById("delete-listing").addEventListener("click", async () => {
+    if (API_BASE && state.ownerToken) {
+      try {
+        await api("listings.php", { ownerToken: state.ownerToken, delete: true });
+      } catch (error) {
+        return showToast(error.message);
+      }
+    }
+    state.profile = null; persist();
+    closeAllModals(); renderProfile(); await refresh();
+    showToast("Your listing has been removed.");
   });
+
+  document.getElementById("verify-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const code = event.currentTarget.elements.code.value.trim();
+    if (!code) return showToast("Enter the six-digit code.");
+    try {
+      const result = await api("verify.php", { step: "confirm", email: pendingListing.email, code });
+      state.ownerToken = result.ownerToken;
+      state.email = result.email;
+      persist();
+      setModal("verify-modal", false);
+      await publishListing(pendingListing, true);
+    } catch (error) {
+      showToast(error.message);
+    }
+  });
+
+  document.getElementById("resend-code").addEventListener("click", async () => {
+    try {
+      await api("verify.php", { step: "request", email: pendingListing.email });
+      showToast("A new code is on its way.");
+    } catch (error) { showToast(error.message); }
+  });
+
   document.querySelectorAll("[data-close-modal]").forEach(button => button.addEventListener("click", closeAllModals));
   document.getElementById("activity-close").addEventListener("click", () => setModal("activity-modal", false));
   document.getElementById("building-choice").addEventListener("click", () => {
@@ -717,7 +1004,11 @@ async function boot() {
   db = await DataSource.load();
   bindEvents(); renderBuildingMenu(); renderProfile(); setBuilding(buildingIndex);
   selectView("3d");
-  if (LISTINGS_ENDPOINT) setInterval(async () => { db = await DataSource.load(); renderRooms(); updateViewer(); }, 15000);
+  if (API_BASE) {
+    syncBookmarks().then(() => { renderBookmarkBadge(); renderRooms(); });
+    /* Other students are posting while this page is open. */
+    setInterval(refresh, 20000);
+  }
 }
 
 boot();

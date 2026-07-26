@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
     <!-- Bump ?v= on every CSS/JS change — shared hosting CDNs serve stale assets otherwise. -->
-    <link rel="stylesheet" href="./styles.css?v=32" />
+    <link rel="stylesheet" href="./styles.css?v=33" />
   </head>
   <body>
     <!-- Layout: a header pill, a headline row with the hostel's live counts on
@@ -35,6 +35,7 @@
           </div>
 
           <div class="topbar-actions">
+            <button class="btn btn--ghost" id="open-bookmarks">Saved <b class="count-badge" id="bookmark-badge">0</b></button>
             <button class="btn btn--outline" id="open-feedback">Feature request</button>
             <!-- One entry point to the listing form. The old nav tab did exactly
                  the same thing as this button, so it's gone. -->
@@ -199,6 +200,16 @@
           <label class="span-3">Current hostel<select name="hostel" required></select></label>
           <label class="span-3">Current room<input name="room" required inputmode="numeric" maxlength="4" placeholder="Room number, e.g. 912" title="Use the room number only: 912 means ninth floor, room 12." /></label>
 
+          <fieldset class="consent">
+            <label class="consent-row">
+              <input type="checkbox" name="shareContact" />
+              <span>
+                <strong>Show my name and phone number on my room</strong>
+                <small>Anyone using Nivas can then see them and message you directly. Leave this off and your room still appears — people just can't contact you through it. You can change it any time.</small>
+              </span>
+            </label>
+          </fieldset>
+
           <fieldset class="move-choice">
             <legend>Are you willing to move?</legend>
             <p class="field-help">This is the one answer that decides how your room appears to everyone else.</p>
@@ -298,9 +309,39 @@
       </section>
     </div>
 
+    <!-- Email check. The only identity in the system: it does not prove someone
+         lives in a room, but it ties a listing to a real institute mailbox so
+         nobody can publish a stranger's phone number anonymously. -->
+    <div class="modal-backdrop hidden" id="verify-modal" role="dialog" aria-modal="true" aria-labelledby="verify-modal-title">
+      <section class="modal-card modal-card--narrow">
+        <button class="icon-btn modal-close" data-close-modal aria-label="Close">×</button>
+        <p class="modal-kicker">ONE-TIME CHECK</p>
+        <h2 id="verify-modal-title">Confirm it's you</h2>
+        <p class="modal-copy">We emailed a six-digit code to <strong id="verify-email">your address</strong>. Enter it and your listing goes live.</p>
+        <form id="verify-form" class="form-grid">
+          <label class="span-6">Six-digit code<input name="code" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" required /></label>
+          <div class="form-actions">
+            <button class="btn btn--ghost" type="button" id="resend-code">Send it again</button>
+            <button class="btn btn--primary" type="submit">Verify and publish <b>→</b></button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <!-- Saved rooms. -->
+    <div class="modal-backdrop hidden" id="bookmarks-modal" role="dialog" aria-modal="true" aria-labelledby="bookmarks-modal-title">
+      <section class="modal-card">
+        <button class="icon-btn modal-close" data-close-modal aria-label="Close">×</button>
+        <p class="modal-kicker">SAVED ROOMS</p>
+        <h2 id="bookmarks-modal-title">These are all your bookmarks</h2>
+        <p class="modal-copy">Rooms you've saved across every hostel. Bookmarking is private — nobody sees who saved a room, only how many people did.</p>
+        <div id="bookmarks-list"></div>
+      </section>
+    </div>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./app.js?v=24"></script>
+    <script src="./app.js?v=25"></script>
     <script type="module" src="./viewer3d.js?v=11"></script>
   </body>
 </html>

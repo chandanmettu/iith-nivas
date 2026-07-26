@@ -31,6 +31,15 @@ python3 -m http.server 8137
 
 Then visit `http://localhost:8137`.
 
+## Backend
+
+Listings are shared through a PHP + MySQL API in [`api/`](api/), which is what
+Hostinger shared hosting runs. Setup, safety notes and the launch checklist are
+in [`docs/DEPLOY.md`](docs/DEPLOY.md). `api/config.php` holds credentials and is
+gitignored — copy `api/config.example.php` on the server.
+
+Without the API the app still runs: listings save to that browser only.
+
 ## Stack
 
 Static HTML/CSS/JS — no framework, no build step, no npm. three.js and
