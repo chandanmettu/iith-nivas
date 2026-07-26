@@ -1,7 +1,8 @@
 <?php
 /**
  * POST { kind, name, email, phone?, hostel?, message }
- * Stores the report and forwards it to config['feedback_to'].
+ * Stores the report. No mailbox is configured, so check nivas_feedback
+ * in phpMyAdmin instead of expecting an email.
  */
 
 declare(strict_types=1);
@@ -24,11 +25,5 @@ $hostel = nivas_hostel(nivas_str($body, 'hostel', 64));
 nivas_db()->prepare(
     'INSERT INTO nivas_feedback (kind, name, email, phone, hostel, message) VALUES (?, ?, ?, ?, ?, ?)'
 )->execute([$kind, $name, $email, $phone, $hostel, $message]);
-
-nivas_mail(
-    nivas_config()['feedback_to'],
-    "[Nivas] {$kind} from {$name}",
-    "Type: {$kind}\nName: {$name}\nEmail: {$email}\nPhone: {$phone}\nHostel: {$hostel}\n\n{$message}\n"
-);
 
 nivas_send(['ok' => true]);

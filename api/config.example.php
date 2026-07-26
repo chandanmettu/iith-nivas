@@ -30,12 +30,4 @@ return [
     // true  = the address must enter a code mailed to it first. Keep this on:
     //         it is what stops a student publishing someone else's phone number.
     'require_verification' => true,
-
-    // Where feature requests and bug reports are delivered.
-    'feedback_to' => 'you@iith.ac.in',
-
-    // From: address for outgoing mail. Must be a mailbox on your own domain or
-    // Hostinger will drop it. Create it in hPanel → Emails.
-    'mail_from' => 'no-reply@nivas.example.com',
-    'mail_from_name' => 'Nivas',
 ];

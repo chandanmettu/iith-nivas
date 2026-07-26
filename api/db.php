@@ -86,14 +86,14 @@ function nivas_begin(string $method): array
     return is_array($body) ? $body : [];
 }
 
-function nivas_send(array $payload, int $status = 200): never
+function nivas_send(array $payload, int $status = 200)
 {
     http_response_code($status);
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-function nivas_fail(int $status, string $message): never
+function nivas_fail(int $status, string $message)
 {
     nivas_send(['ok' => false, 'error' => $message], $status);
 }
@@ -187,8 +187,9 @@ function nivas_throttle(string $bucket, int $limit, int $seconds): void
     $db->prepare('DELETE FROM nivas_rate WHERE created_at < (NOW() - INTERVAL 1 DAY)')->execute();
 
     $key   = $bucket . ':' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-    $count = $db->prepare('SELECT COUNT(*) FROM nivas_rate WHERE bucket = ? AND created_at > (NOW() - INTERVAL ? SECOND)');
-    $count->execute([$key, $seconds]);
+    $seconds = max(1, (int) $seconds);   // inlined below: never user input
+    $count = $db->prepare("SELECT COUNT(*) FROM nivas_rate WHERE bucket = ? AND created_at > (NOW() - INTERVAL {$seconds} SECOND)");
+    $count->execute([$key]);
     if ((int) $count->fetchColumn() >= $limit) {
         nivas_fail(429, 'Too many attempts. Wait a few minutes and try again.');
     }

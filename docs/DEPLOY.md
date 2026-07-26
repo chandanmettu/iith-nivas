@@ -29,8 +29,12 @@ Fill in:
 | `allowed_origins` | your live URL. Nothing else may call the API from a browser. |
 | `email_domain` | `iith.ac.in` — listings can only be created from an institute address |
 | `require_verification` | **keep `true`** (see Safety below) |
-| `feedback_to` | where feature requests land |
-| `mail_from` | a real mailbox on your domain (hPanel → Emails). Hostinger drops mail from addresses it doesn't host. |
+
+No mailbox is configured for this deployment. Feature requests save straight
+to `nivas_feedback` — check that table in phpMyAdmin instead of expecting an
+email. Verification codes (`require_verification: true`) also need
+`nivas_mail()` to actually deliver, so re-add `mail_from`/`feedback_to` to
+`config.php` first if you turn that back on.
 
 ## 3. Upload
 
