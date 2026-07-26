@@ -52,7 +52,8 @@ const materials = {
 };
 // Mirrors the student-submitted swap status tokens in styles.css. A dark
 // panel is unlisted: it does not imply a vacancy or an official allocation.
-const statusColors = { unlisted: '#514346', occupied: '#47875f', open: '#d99a2b', match: '#3c8ca0' };
+// Traffic light: red = registered but not moving, yellow = open, green = match.
+const statusColors = { unlisted: '#514346', occupied: '#d6452f', open: '#e0a318', match: '#2f9161' };
 
 function box(size, position, material, parent, cast = true) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
@@ -177,6 +178,19 @@ function createResidentialBuilding() {
     box([5.85, .15, 1.65], [0, groundClearance + floor * floorHeight + .13, 0], materials.band, floorGroups[floor]);
   }
 
+  // Building identity: the hostel's name in brushed silver on the link block
+  // between the two clusters, readable from the front and from the back.
+  const signs = [1, -1].map(side => {
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(4.3, .82),
+      new THREE.MeshStandardMaterial({ transparent: true, metalness: .9, roughness: .28, envMapIntensity: 1.4 })
+    );
+    sign.position.set(0, groundClearance + 4 * floorHeight + .92, side * .72);
+    if (side < 0) sign.rotation.y = Math.PI;
+    group.add(sign);
+    return sign;
+  });
+
   // The covered court extends beyond the residential footprint, leaving room for the approach and cycle bays.
   box([21.8, .18, 15.6], [0, .09, 0], materials.paving, group, false);
   const contactShadow = new THREE.Mesh(new THREE.CircleGeometry(7.4, 56), new THREE.MeshBasicMaterial({ color: '#352425', transparent: true, opacity: .28, depthWrite: false }));
@@ -256,7 +270,7 @@ function createResidentialBuilding() {
   bicycleCourt(-5.35, -1.78, -1); bicycleCourt(5.35, -1.78, -1);
   planterSeat(-2.7, 0, .08); planterSeat(2.7, 0, -.08);
 
-  return { group, floorGroups, roomMeshes };
+  return { group, floorGroups, roomMeshes, signs };
 }
 
 // A single shared building instance, recoloured per whichever hostel is
@@ -346,10 +360,52 @@ function applyRoomStatus(mesh, status) {
   mesh.material.emissiveIntensity = nextStatus === 'unlisted' ? .04 : nextStatus === 'match' ? .38 : nextStatus === 'open' ? .28 : .17;
 }
 let activeRoomMeshes = residential.roomMeshes;
+/* Brushed-silver lettering drawn to a canvas: a dark extrusion behind the
+   glyphs plus a light-to-dark-to-light vertical gradient reads as bevelled
+   metal, and the plane's own metalness picks up the scene lighting. */
+function makeNameTexture(name) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024; canvas.height = 200;
+  const ctx = canvas.getContext('2d');
+  const text = name.toUpperCase();
+  ctx.font = '800 116px Manrope, Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.letterSpacing = '14px';
+
+  for (let depth = 7; depth > 0; depth--) {         // extruded side of the letters
+    ctx.fillStyle = `rgba(28, 24, 26, ${.10 + depth * .045})`;
+    ctx.fillText(text, 512 + depth * .7, 100 + depth * 1.1);
+  }
+  const silver = ctx.createLinearGradient(0, 44, 0, 156);
+  silver.addColorStop(0, '#ffffff');
+  silver.addColorStop(.30, '#dfe4e9');
+  silver.addColorStop(.50, '#f7f9fa');
+  silver.addColorStop(.68, '#98a2ac');
+  silver.addColorStop(.86, '#cfd6dc');
+  silver.addColorStop(1, '#f2f5f7');
+  ctx.fillStyle = silver;
+  ctx.fillText(text, 512, 100);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(255, 255, 255, .5)';
+  ctx.strokeText(text, 512, 100);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
 function setBuilding(name, roomStatuses = {}) {
   residential.roomMeshes.forEach(mesh => {
     mesh.userData.hostel = name;
     applyRoomStatus(mesh, roomStatuses[mesh.userData.visualRoomId] || 'unlisted');
+  });
+  const texture = makeNameTexture(name);
+  residential.signs.forEach(sign => {
+    sign.material.map?.dispose();
+    sign.material.map = texture;
+    sign.material.needsUpdate = true;
   });
 }
 function setFloor(value) {

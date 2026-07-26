@@ -26,18 +26,23 @@ elements: primary buttons, active nav, selected states, chrome accents.
 | `--accent-600/700` | `#d8481e` / `#c0430f` | hover, text-on-tint |
 | `--accent-100/50` | `#ffdfca` / `#fff4ec` | focus ring, notice banner |
 
-### Room status — never brand
+### Room status — a traffic light
 
-**This separation is deliberate and load-bearing.** Brand red means an action,
-never a room state. Swap-status colours sit clear of the brand ramp, so room
-information cannot be confused with an interactive control.
+Set by Chandan on 2026-07-26: **red = no swap possible, yellow = open to swap,
+green = matched.** This replaced an earlier rule that banned red from room
+status entirely; the status red is a warmer, brighter vermilion than
+`--brand-600`, so a swatch still never reads as a brand button. Don't reuse
+`--brand-600` for a room state.
 
-| State | Token | Treatment |
+| State | Token | Meaning |
 |---|---|---|
-| Unlisted | `--status-unlisted` `#514346` | darkened solid; means no published listing |
-| Registered | `--status-occupied` `#47875f` | solid fill |
-| Open to swap | `--status-open` `#d99a2b` | solid fill with a soft glow |
-| Match for you | `--status-match` `#3c8ca0` | brighter personalized glow |
+| Unlisted | `--status-unlisted` `#514346` | nobody has posted about this room |
+| Registered | `--status-occupied` `#d6452f` | resident listed it, isn't moving |
+| Open to swap | `--status-open` `#e0a318` | resident wants to move |
+| Match for you | `--status-match` `#2f9161` | you each want the other's room |
+
+A fifth treatment, `.room.void`, is a cell the drawing shows but the building
+doesn't have: solid dark with a white cross, inert, never numbered or counted.
 
 Each has a `-tint` variant for pill backgrounds. The product only communicates
 student-published swap information; it makes no official room-allocation claim.
@@ -99,6 +104,7 @@ Every clickable control in the app is one of these. Do not invent a new button.
 | `.btn.btn--primary` | the one main action in a view — solid brand |
 | `.btn.btn--secondary` | tinted, repeatable |
 | `.btn.btn--ghost` | text-only, low emphasis |
+| `.btn.btn--outline` | transparent, brand border + text — a branded secondary action that must not compete with the primary (header's Feature request) |
 | `.btn--block` | modifier — full width |
 | `.icon-btn` | square 30px, icon only (close, zoom, overflow) |
 | `.icon-btn--quiet` | borderless variant |
@@ -125,60 +131,59 @@ Every clickable control in the app is one of these. Do not invent a new button.
 
 ## Layout
 
-**A normal scrolling page, one full-bleed explorer card, floating context
-cards over the stage — no side rail.** This replaced a two-column
-(artifact + context rail) layout that itself replaced a sidebar layout,
-in consecutive sessions; see PROGRESS.md if you're tempted to bring either
-back. `.app-shell` is a plain flex column (`min-height: 100dvh`, page
-scrolls); `.topbar` is `position: sticky; top: 0`.
+**A scrolling page holding a header pill, a headline row, and one explorer
+card whose stage is three real columns: floors | artifact | room detail.**
+Nothing is absolutely positioned over the artifact. That rule is the whole
+point of this layout — the previous version floated a key card, a zoom
+control and a room-detail card on top of the stage, and they collided with
+each other and with the hostel dropdown. See PROGRESS.md.
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│ .topbar   brand · nav · Create-listing CTA                     │  60px, sticky
-├────────────────────────────────────────────────────────────────┤
-│ .page-intro   "Find the room swap that fits."                  │
-│                                                                  │
-│  .explorer-card ───────────────────────────────────────────┐   │
-│  │ .toolbar  picker · view switch · floor <select>          │   │  64px
-│  ├───────────────────────────────────────────────────────────┤   │
-│  │ .panel-stage  clamp(440px, 58vh, 600px)                   │   │
-│  │  .key-card (↖)         .room-detail-card (↗)              │   │
-│  │  .zoom-controls (↙)    with .room-detail-stats footer      │   │
-│  │  (.hero-model 3D / #visual-stage floor+map, full-bleed)   │   │
+┌──────────────────────────────────────────────────────────────────┐
+│ (.topbar)  ▣ NIVAS │ STUDENT ROOM SWAP    [Feature req] [Create]│
+│            gradient + louvre motif, ~92px                        │
+│ .page-head   headline + subline      │  15 listed · 10 open ·    │
+│                                      │  2 matches · Swap activity│
+│  .explorer-card ─────────────────────────────────────────────┐   │
+│  │ .toolbar  picker · status key · 3D/Floor switch (right)   │   │ 64px
+│  ├──────┬───────────────────────────────────┬───────────────┤   │
+│  │floor │                                   │  room detail  │   │
+│  │ rail │        THE ARTIFACT               │  (#room-panel)│   │ clamp
+│  │ 68px │  .hero-model 3D / #visual-stage   │  --detail-w   │   │ 460–660
+│  ├──────┴───────────────────────────────────┴───────────────┤   │
 │  └───────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  .insight-row   2 clickable tiles + 1 privacy note              │
-└────────────────────────────────────────────────────────────────┘
+│  privacy note                                                    │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-- **`.panel-stage` is the artifact, full width, no side column competing for
-  it.** `.hero-model` (3D) and `#visual-stage` (site/floor/map) are
-  absolutely-positioned siblings inside it — mutually exclusive via
-  `.hidden`, so switching views never reflows anything. Give it a fixed-ish
-  height (`clamp(...)`, currently 440–600px) rather than growing with the
-  viewport — the floating cards need a stable frame to anchor to.
-- **`.key-card`, `.zoom-controls`, `.room-detail-card` are absolutely
-  positioned inside `.panel-stage`**, not in a side rail. All three are white
-  cards with the same border/radius/shadow, so they read consistently over
-  both the dark 3D scene and the light floor-plan background. Don't move any
-  of them back into a persistent column — that's the exact thing this
-  structure replaced twice already.
-- **`#room-panel` (the room-detail card) is shared by both views.** Clicking
-  a room in the floor plan *or* the 3D viewer populates the same card —
-  `viewer3d.js` dispatches `nivas:room-click` on a 3D click, `app.js`
-  handles it the same way as a floor-plan click. Don't let one view grow its
-  own separate detail UI again.
-- **Floor selection is one `<select>` in the toolbar** (`#floor-select`), not
-  a rail of buttons. It lists "All floors" only when the 3D view is active
-  (floor-plan always needs one specific floor). Don't reintroduce a
-  vertical floor-button rail — that pattern existed in two different forms
-  (light and dark) in earlier sessions and both were replaced by this.
-- **No sidebar.** Nav lives in `.topbar` alongside the brand and the single
-  primary CTA (`#hero-create-listing`). With the "My swap listing" nav tab
-  that's two entry points to the listing form — don't add a third.
-- The on-canvas `.three-title`/`.three-readout` text overlays are hidden
-  (`display: none`) wherever they'd sit under `.key-card` — their job moved
-  to the toolbar (hostel name) and the room-detail card (click feedback).
+- **Nothing floats over the artifact.** No absolutely-positioned card inside
+  `.stage-grid`. If something needs to live next to the artifact, it gets a
+  column or a band. This is what fixed the overlap bugs; don't undo it.
+- **`.explorer-card` must not clip its overflow.** `overflow: hidden` on it
+  is what cut off the hostel dropdown. The corners are rounded on `.toolbar`
+  (top) and `.key-bar` (bottom) instead. `.toolbar` sits at `z-index: 5`
+  above `.stage-grid`'s `1`, so the menu opens over the stage cleanly.
+- **Floors are a vertical rail on the left of the stage**, inside the card.
+  The "ALL" button only appears in the 3D view — the floor plan always draws
+  exactly one floor. Not a dropdown in the toolbar corner: that put the most
+  frequently used control in the least reachable spot.
+- **The right column is only ever room detail**, and it is a *stack of cards*
+  on a recessed column, not one tinted strip: a status-coloured identity card
+  (title left, status pill hard right, Room/Floor/Pod as large figures), then
+  the ranked destination choices as their own card. Counts live in
+  `.page-head` beside the headline, never here.
+- **`#room-panel` is shared by both views.** Clicking a room in the floor
+  plan *or* the 3D model fills the same column — `viewer3d.js` dispatches
+  `nivas:room-click`, `app.js` treats it exactly like a floor-plan click.
+- **The key lives in the toolbar**, between the hostel picker and the view
+  switch. Four labels only; each one's meaning is a tooltip on hover or
+  keyboard focus, so nothing is unexplained and the toolbar stays quiet.
+- **One entry point to the listing form:** the header CTA, which reads
+  "Create my swap listing" and switches to "Update my swap listing" once a
+  listing exists. The old nav had a "My swap listing" tab that did the same
+  thing — two controls, one action, no reason. Don't re-add it.
+- **No zoom controls.** The 3D view already zooms by scroll and the floor
+  plan is legible at stage size.
 - **The 3D viewer shows one hostel at a time.** A multi-hostel side-by-side
   compare mode was tried and reverted — same shared camera meant orbiting
   moved all buildings together, and it didn't fix the real lag (3x the

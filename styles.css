@@ -3,11 +3,12 @@
    Design system. Read docs/DESIGN.md before changing anything in this file.
 
    Structure:
-     01 Tokens          06 Workspace shell
-     02 Base            07 Views (3D / map / site / floor)
-     03 Primitives      08 Room panel
-     04 Sidebar         09 Modals + requests
-     05 Topbar & hero   10 Toast, responsive, a11y
+     01 Tokens          07 Status key
+     02 Base            08 Views (3D / map / site / floor)
+     03 Primitives      09 Room detail panel
+     04 Header pill     10 Modals + requests
+     05 Page + card     11 Component refinements
+     06 Stage row       12 Toast, responsive, a11y
 
    Rule: no hard-coded colours below section 01. Every value is a token.
    ========================================================================= */
@@ -54,15 +55,19 @@
   --overlay-backdrop: rgba(15, 21, 30, .48);
   --brand-action-shadow: 0 12px 24px rgba(169, 31, 50, .22);
 
-  /* Room status colours reflect only student-submitted swap information. */
+  /* Room status colours reflect only student-submitted swap information.
+     Traffic-light reading, set by Chandan 2026-07-26: red = registered but
+     not moving (no swap possible), yellow = open to swap, green = match.
+     The red is deliberately a warmer, brighter vermilion than --brand-600 so
+     a status swatch never reads as a brand button. */
   --status-unlisted:       #514346;
   --status-unlisted-tint:  #eee7e2;
-  --status-occupied:       #47875f;
-  --status-occupied-tint:  #e4efe7;
-  --status-open:           #d99a2b;
-  --status-open-tint:      #fbf0d8;
-  --status-match:          #3c8ca0;
-  --status-match-tint:     #dff1f3;
+  --status-occupied:       #d6452f;
+  --status-occupied-tint:  #fbe4de;
+  --status-open:           #e0a318;
+  --status-open-tint:      #fdf1d3;
+  --status-match:          #2f9161;
+  --status-match-tint:     #e0f1e7;
 
   /* Radius — one scale, no ad-hoc values */
   --r-xs:   4px;
@@ -102,6 +107,9 @@
   --e-2: 0 10px 30px rgba(20, 31, 47, .08);
   --e-3: 0 20px 48px rgba(20, 31, 47, .12);
   --e-4: 0 30px 72px rgba(20, 31, 47, .2);
+
+  /* Layout — the stage row's one adjustable dimension */
+  --detail-w: 316px;
 
   /* Motion */
   --t-fast: 120ms;
@@ -195,6 +203,15 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   padding: var(--s-2) var(--s-3);
 }
 .btn--ghost:hover { background: var(--surface-sunk); color: var(--ink-800); }
+
+/* Outline — a secondary action that must not compete with .btn--primary but
+   still reads as branded. Used by the header's feature-request button. */
+.btn--outline {
+  background: transparent;
+  color: var(--brand-600);
+  border-color: var(--brand-600);
+}
+.btn--outline:hover { background: var(--brand-50); border-color: var(--brand-700); color: var(--brand-700); }
 
 .btn--block { width: 100%; }
 
@@ -293,7 +310,72 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .avatar--lg { width: 38px; height: 38px; font-size: var(--fs-xs); }
 .avatar--private { background: linear-gradient(135deg, var(--ink-400), var(--ink-600)); }
 
-/* Form fields */
+/* Form fields — six-column grid so a row can be 3-up (span-2) or 2-up
+   (span-3). The listing form's details fit in exactly two rows. */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+.form-grid > .span-2 { grid-column: span 2; }
+.form-grid > .span-3 { grid-column: span 3; }
+.form-grid > label { display: grid; gap: var(--s-2); color: var(--ink-800); font: 700 var(--fs-xs) var(--font-sans); }
+.form-grid input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-sunk);
+  padding: 0 var(--s-4);
+  color: var(--ink-900);
+  font: 500 var(--fs-sm) var(--font-sans);
+  outline: 0;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.form-grid input::placeholder { color: var(--ink-400); font-weight: 400; }
+.form-grid input:focus { border-color: var(--accent-500); background: var(--surface); box-shadow: var(--focus-ring); }
+.field-label { display: flex; align-items: baseline; gap: var(--s-2); }
+.field-optional { color: var(--ink-400); font: 500 var(--fs-micro) var(--font-sans); font-style: normal; }
+.form-grid textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-sunk);
+  padding: var(--s-3) var(--s-4);
+  color: var(--ink-900);
+  font: 500 var(--fs-sm) var(--font-sans);
+  line-height: var(--lh-base);
+  resize: vertical;
+  outline: 0;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.form-grid textarea:focus { border-color: var(--accent-500); background: var(--surface); box-shadow: var(--focus-ring); }
+.form-grid > .span-6 { grid-column: span 6; }
+.form-note { margin: 0; color: var(--ink-400); font-size: var(--fs-micro); }
+.choice-tiles--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.choice-tile--idea:has(input:checked) { border-color: var(--brand-600); background: var(--brand-50); box-shadow: 0 0 0 4px var(--brand-100); }
+.choice-tile--idea:has(input:checked) .choice-mark { background: var(--brand-600); color: #fff; }
+.choice-tile--bug:has(input:checked) { border-color: var(--status-occupied); background: var(--status-occupied-tint); box-shadow: 0 0 0 4px rgba(214, 69, 47, .14); }
+.choice-tile--bug:has(input:checked) .choice-mark { background: var(--status-occupied); color: #fff; }
+.choice-tile--other:has(input:checked) { border-color: var(--ink-600); background: var(--surface-sunk); box-shadow: 0 0 0 4px var(--line-soft); }
+.choice-tile--other:has(input:checked) .choice-mark { background: var(--ink-600); color: #fff; }
+
+.field-help { margin: 0 0 var(--s-3); color: var(--ink-500); font: 400 var(--fs-xs) var(--font-sans); }
+
+/* Section heading inside a form — same type scale as the rest of the app,
+   not a mono utility label. */
+.section-head { margin-bottom: var(--s-4); }
+.section-head h3 { font-size: var(--fs-lg); font-weight: 800; color: var(--ink-900); }
+.section-head p { margin: var(--s-1) 0 0; color: var(--ink-500); font-size: var(--fs-xs); }
+
+.form-actions { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s-3); }
+.form-actions .btn--primary { margin-left: auto; min-height: 52px; padding: 0 var(--s-6); border-radius: var(--r-pill); font-size: var(--fs-sm); box-shadow: var(--brand-action-shadow); }
+.form-actions .btn--ghost { color: var(--ink-400); }
+.form-actions .btn--ghost:hover { color: var(--status-occupied); background: var(--status-occupied-tint); }
+
+/* Legacy two-column form layout — still used by any non-listing form. */
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -330,15 +412,133 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .field-grid .btn { grid-column: 1 / -1; }
 .move-choice,
 .move-details { grid-column: 1 / -1; margin: 0; min-width: 0; border: 0; padding: 0; }
-.move-choice { display: flex; flex-wrap: wrap; gap: var(--s-3) var(--s-5); }
-.move-choice legend { width: 100%; margin-bottom: var(--s-1); color: var(--ink-600); font: 700 var(--fs-micro) var(--font-sans); }
-.move-choice label { display: flex; align-items: center; gap: var(--s-2); color: var(--ink-600); font-weight: 500; }
-.move-choice input { width: auto; margin: 0; }
-.move-details { padding: var(--s-4); border: 1px solid var(--line-soft); border-radius: var(--r-md); background: var(--surface-sunk); }
-.move-details > p { margin: 0 0 var(--s-3); }
-.preference-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
-.preference-grid label { gap: var(--s-1); }
-.preference-grid input { padding: var(--s-2); font-size: var(--fs-micro); }
+.move-choice legend { padding: 0; margin-bottom: var(--s-1); color: var(--ink-900); font: 800 var(--fs-lg) var(--font-sans); }
+
+/* The single most consequential answer in the form, so it gets two real
+   tiles that state their consequence — not two radio dots. */
+.choice-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
+.choice-tile {
+  position: relative;
+  display: grid;
+  gap: var(--s-1);
+  padding: var(--s-4) var(--s-4) var(--s-4) 60px;
+  border: 2px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  cursor: pointer;
+  transition: transform var(--t-base) var(--ease), border-color var(--t-fast) var(--ease),
+              background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.choice-tile:hover { transform: translateY(-3px); box-shadow: var(--e-2); }
+.choice-tile input { position: absolute; opacity: 0; pointer-events: none; }
+.choice-mark {
+  position: absolute;
+  left: var(--s-4);
+  top: var(--s-4);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-pill);
+  background: var(--surface-sunk);
+  color: var(--ink-500);
+  font-size: var(--fs-lg);
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), transform var(--t-base) var(--ease);
+}
+.choice-tile:hover .choice-mark { transform: scale(1.08); }
+.choice-tile strong { color: var(--ink-900); font-size: var(--fs-md); }
+.choice-tile small { color: var(--ink-500); font-size: var(--fs-xs); line-height: var(--lh-base); }
+.choice-tile small b { color: var(--ink-800); font-weight: 700; }
+
+.choice-tile--open:has(input:checked) {
+  border-color: var(--status-open);
+  background: var(--status-open-tint);
+  box-shadow: 0 0 0 4px rgba(224, 163, 24, .16);
+}
+.choice-tile--open:has(input:checked) .choice-mark { background: var(--status-open); color: #fff; }
+.choice-tile--stay:has(input:checked) {
+  border-color: var(--status-occupied);
+  background: var(--status-occupied-tint);
+  box-shadow: 0 0 0 4px rgba(214, 69, 47, .14);
+}
+.choice-tile--stay:has(input:checked) .choice-mark { background: var(--status-occupied); color: #fff; }
+.choice-tile:focus-within { box-shadow: var(--focus-ring); }
+
+.move-details { padding: var(--s-5); border: 1px solid var(--line-soft); border-radius: var(--r-lg); background: var(--surface-sunk); }
+.preference-grid { display: grid; gap: var(--s-2); }
+.preference-row { display: grid; grid-template-columns: 28px minmax(0, 1.4fr) minmax(0, 1fr); align-items: center; gap: var(--s-3); }
+.preference-rank {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink-500);
+  font: 700 var(--fs-xs) var(--font-mono);
+}
+
+/* ── Custom dropdown ─────────────────────────────────────────────────────
+   Every <select> in a form is replaced at runtime by this (enhanceSelect in
+   app.js): the native element stays in the DOM for form state, this is what
+   the student sees. Same language as the hostel picker in the toolbar. */
+.select { position: relative; min-width: 0; }
+.select select { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+.select-btn {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0 var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-sunk);
+  color: var(--ink-900);
+  font: 600 var(--fs-sm) var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.select-btn:hover { border-color: var(--brand-200); background: var(--surface); }
+.select-btn:focus-visible { outline: 0; border-color: var(--accent-500); box-shadow: var(--focus-ring); }
+.select-btn span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select-btn.is-placeholder span { color: var(--ink-400); font-weight: 500; }
+.select-btn b { flex: none; color: var(--ink-400); font-weight: 500; transition: transform var(--t-fast) var(--ease); }
+.select.open .select-btn { border-color: var(--accent-500); background: var(--surface); }
+.select.open .select-btn b { transform: rotate(180deg); }
+
+.select-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 244px;
+  overflow-y: auto;
+  display: grid;
+  gap: 2px;
+  padding: var(--s-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--e-3);
+}
+.select-option {
+  border: 0;
+  border-radius: var(--r-sm);
+  padding: var(--s-2) var(--s-3);
+  background: transparent;
+  color: var(--ink-600);
+  font: 600 var(--fs-xs) var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+.select-option:hover { background: var(--brand-50); color: var(--brand-600); }
+.select-option.selected { background: var(--brand-600); color: #fff; }
+.select-menu::-webkit-scrollbar { width: 7px; }
+.select-menu::-webkit-scrollbar-thumb { background: var(--line); border-radius: var(--r-pill); }
 
 /* Card — the one container treatment */
 .card {
@@ -350,10 +550,10 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 
 /* ── 04 Top header ───────────────────────────────────────────────────────── */
 
-/* A normal scrolling page: sticky topbar, then the page content flows below
-   it. The explorer card is full-bleed with small floating context cards over
-   it (key, zoom, room detail) instead of a persistent side column — see
-   docs/PROGRESS.md for why the two-column rail layout was replaced. */
+/* The header is a pill inside the page column, not a full-bleed website
+   banner — same width, same radius language and same hairline as the explorer
+   card below it, so it reads as part of the tool rather than a marketing
+   header bolted on top. */
 .app-shell {
   min-height: 100dvh;
   display: flex;
@@ -361,20 +561,41 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 }
 
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 6;
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
-  gap: var(--s-8);
-  height: 60px;
+  gap: var(--s-6);
+  min-height: 92px;
   flex: none;
-  padding: 0 var(--s-6);
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  padding: var(--s-4) var(--s-4) var(--s-4) var(--s-6);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background:
+    radial-gradient(120% 180% at 88% 0%, var(--brand-50), transparent 62%),
+    linear-gradient(90deg, var(--surface) 0%, var(--accent-50) 100%);
+  box-shadow: var(--e-1);
 }
-.topbar-cta { margin-left: auto; flex: none; min-height: 40px; border-radius: var(--r-pill); font-size: var(--fs-sm); box-shadow: var(--brand-action-shadow); white-space: nowrap; }
-.topbar-cta b { margin-left: var(--s-2); }
+/* The facade's louvre rhythm, barely there, fading in from the right. */
+.topbar:after {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 340px;
+  background: repeating-linear-gradient(90deg, rgba(169, 31, 50, .10) 0 3px, transparent 3px 11px);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000);
+  mask-image: linear-gradient(90deg, transparent, #000);
+  pointer-events: none;
+}
+.topbar-id { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--s-4); min-width: 0; }
+.topbar-tag { display: grid; gap: 3px; padding-left: var(--s-4); border-left: 1px solid var(--brand-100); }
+.topbar-tag span { font: var(--fs-micro) var(--font-mono); letter-spacing: var(--track-mono); color: var(--brand-600); }
+.topbar-tag small { color: var(--ink-500); font-size: var(--fs-xs); }
+.topbar-actions { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--s-3); margin-left: auto; }
+.topbar-actions .btn { min-height: 44px; padding: 0 var(--s-5); border-radius: var(--r-pill); font-size: var(--fs-sm); }
+
+.topbar-cta { flex: none; box-shadow: var(--brand-action-shadow); white-space: nowrap; }
+.topbar-cta b { margin-left: var(--s-1); }
 
 .brand {
   display: flex;
@@ -406,106 +627,92 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .brand-mark i:nth-child(2) { height: 26px; background: var(--brand-600); }
 .brand-mark i:nth-child(3) { height: 20px; }
 
-.main-nav { display: flex; align-items: center; gap: var(--s-1); }
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  border: 0;
-  border-radius: var(--r-pill);
-  padding: var(--s-2) var(--s-4);
-  background: transparent;
-  color: var(--ink-500);
-  font: 600 var(--fs-sm) var(--font-sans);
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
-}
-.nav-item:hover { background: var(--surface-sunk); color: var(--ink-800); }
-.nav-item.active { background: var(--brand-50); color: var(--brand-600); }
-.nav-icon { width: 18px; text-align: center; font: var(--fs-xl) Georgia, serif; }
-.nav-item b {
-  margin-left: auto;
-  border-radius: var(--r-pill);
-  padding: 3px var(--s-2);
-  background: var(--brand-100);
-  color: var(--brand-700);
-  font: var(--fs-micro) var(--font-mono);
-}
-
-/* ── 05 Page — intro line, explorer card, insight row ───────────────────── */
+/* ── 05 Page — header pill, headline row, explorer card ─────────────────── */
 
 .page {
-  max-width: 1240px;
+  max-width: 1320px;
   width: 100%;
   margin: 0 auto;
-  padding: var(--s-8) var(--s-6) var(--s-10);
+  padding: var(--s-5) var(--s-6) var(--s-8);
 }
 
-.page-intro { margin-bottom: var(--s-6); }
-.page-intro h1 {
-  font-size: var(--fs-4xl);
+/* Headline left, the selected hostel's live counts right. The counts used to
+   sit under the artifact, where they read as an afterthought. */
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-8);
+  margin: var(--s-8) 0 var(--s-5);
+}
+.page-head-copy h1 {
+  font-size: var(--fs-3xl);
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -.02em;
   color: var(--ink-900);
 }
-.page-intro h1 em { font-style: normal; color: var(--brand-600); }
+.page-head-copy h1 em { font-style: normal; color: var(--brand-600); }
+.page-head-copy p { margin: var(--s-2) 0 0; color: var(--ink-500); font-size: var(--fs-sm); }
+.page-head-copy strong { color: var(--ink-800); font-weight: 700; }
 
-/* One card, one shadow, one set of rounded corners — the toolbar, the stage
-   and its floating context cards all live inside it. */
+/* Counts read as solid chips rather than loose numerals — a status swatch,
+   the figure, then what it counts. */
+.head-stats { display: flex; align-items: center; gap: var(--s-3); flex: none; }
+.head-stat {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  box-shadow: var(--e-1);
+  white-space: nowrap;
+}
+.head-stat:before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  align-self: center;
+  flex: none;
+  border-radius: var(--r-pill);
+  background: var(--ink-400);
+}
+.head-stat--open:before  { background: var(--status-open); }
+.head-stat--match:before { background: var(--status-match); }
+.head-stat strong { font: 800 var(--fs-xl) var(--font-sans); line-height: 1; letter-spacing: -.02em; color: var(--ink-900); }
+.head-stat small { color: var(--ink-500); font-size: var(--fs-xs); font-weight: 600; }
+.head-activity { min-height: 42px; padding: 0 var(--s-4); border-radius: var(--r-pill); font-size: var(--fs-xs); }
+
+/* One card: toolbar / stage row / key bar, divided by hairlines. It must NOT
+   clip its overflow — that's what was cutting off the hostel dropdown. The
+   corners are rounded on the first and last children instead. */
 .explorer-card {
+  position: relative;
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   background: var(--surface);
   box-shadow: var(--e-2);
-  overflow: hidden;
 }
 
 .toolbar {
   position: relative;
-  z-index: 3;
+  z-index: 5;            /* above the stage, so the hostel menu drops over it */
   height: 64px;
   display: flex;
   align-items: center;
   gap: var(--s-5);
   padding: 0 var(--s-5);
   border-bottom: 1px solid var(--line);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
   background: var(--surface-sunk);
 }
-.floor-select-wrap {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  margin-left: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  padding: 0 var(--s-3);
-  height: 38px;
-  color: var(--ink-500);
-  background: var(--surface);
-}
-.floor-select-wrap select {
-  border: 0;
-  background: transparent;
-  color: var(--ink-800);
-  font: 600 var(--fs-sm) var(--font-sans);
-  cursor: pointer;
-}
-.floor-select-wrap select:focus-visible { outline: 0; box-shadow: none; }
+/* Picker left, key in the middle, view switch pinned to the right corner. */
+.toolbar .key { margin-left: var(--s-4); }
+.view-switch { margin-left: auto; }
 
 .building-picker { position: relative; display: flex; align-items: center; }
-.picker-arrow {
-  width: 28px;
-  height: 34px;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--ink-400);
-  font-size: var(--fs-lg);
-  cursor: pointer;
-}
-.picker-arrow:hover { background: var(--surface-sunk); color: var(--ink-800); }
 .building-choice {
   display: flex;
   align-items: center;
@@ -574,123 +781,187 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .building-menu::-webkit-scrollbar { width: 7px; }
 .building-menu::-webkit-scrollbar-thumb { background: var(--line); border-radius: var(--r-pill); }
 
-/* The status key sits inside the toolbar, pinned right — one band, not two. */
-/* Stage — the 3D viewer and the site/floor/map views are mutually exclusive
-   (toggled via .hidden in app.js selectView()); stack them so switching
-   views never reflows the panel around them. A fixed height gives the
-   floating context cards below a stable frame to sit inside. */
-.panel-stage { position: relative; height: clamp(440px, 58vh, 600px); }
+/* ── 06 Stage row — floors | artifact | room detail ─────────────────────── */
+
+/* Three real columns. Nothing is absolutely positioned over the artifact any
+   more: floating cards are what produced the overlap bugs, and they stole the
+   space the model needed. */
+.stage-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr) var(--detail-w);
+  grid-template-areas: "rail stage detail";
+  height: clamp(460px, 64vh, 660px);
+  overflow: hidden;                                  /* clips to the card's */
+  border-radius: 0 0 var(--r-xl) var(--r-xl);        /* bottom corners      */
+}
+
+.floor-rail {
+  grid-area: rail;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-4) 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  background: var(--surface-sunk);
+}
+.floor-rail-label {
+  font: var(--fs-micro) var(--font-mono);
+  letter-spacing: var(--track-mono);
+  color: var(--ink-400);
+}
+.floor-rail-buttons { display: grid; gap: var(--s-1); }
+.floor-rail button {
+  width: 38px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink-600);
+  font: 600 var(--fs-xs) var(--font-mono);
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+}
+.floor-rail button:hover { border-color: var(--brand-200); background: var(--brand-50); color: var(--brand-600); }
+.floor-rail button.active {
+  border-color: var(--brand-600);
+  background: var(--brand-600);
+  color: #fff;
+  box-shadow: var(--e-1);
+}
+.floor-all { margin-top: var(--s-2); font-size: var(--fs-micro) !important; }
+
+.panel-stage { grid-area: stage; position: relative; min-width: 0; overflow: hidden; }
 .hero-model, .visual-stage { position: absolute; inset: 0; }
 .hero-model { overflow: hidden; background: var(--scene); }
 .visual-stage { background: var(--surface-sunk); }
 
-/* Floating context cards — shared by every view, siblings of .hero-model /
-   .visual-stage inside .panel-stage. White so they read consistently over
-   both the dark 3D scene and the light floor-plan background. */
-.key-card, .zoom-controls, .room-detail-card {
-  position: absolute;
-  z-index: 4;
+/* The right column holds room detail and nothing else. Its background carries
+   the selected room's status, so the colour reading doesn't depend on
+   noticing a small pill. */
+/* A stack of cards on a recessed column, so the detail reads as an object
+   sitting on the page rather than a long tinted strip down the side. */
+.room-detail {
+  grid-area: detail;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--s-4);
+  border-left: 1px solid var(--line);
+  background: var(--surface-sunk);
+}
+#panel-detail { display: flex; flex-direction: column; gap: var(--s-3); }
+
+.detail-card {
+  padding: var(--s-4);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--surface);
-  box-shadow: var(--e-2);
+  box-shadow: var(--e-1);
 }
-.key-card { top: var(--s-4); left: var(--s-4); padding: var(--s-3) var(--s-4); display: grid; gap: var(--s-2); }
-.key-card p { margin: 0 0 2px; font: 700 var(--fs-sm) var(--font-sans); color: var(--ink-900); }
-.key-card span { display: flex; align-items: center; gap: var(--s-2); color: var(--ink-600); font-size: var(--fs-xs); }
-.key-card i { display: inline-block; height: 10px; width: 10px; border-radius: 3px; }
-.key-card i.unlisted { background: var(--status-unlisted); }
-.key-card i.occupied { background: var(--status-occupied); }
-.key-card i.open     { background: var(--status-open); box-shadow: 0 0 6px var(--status-open); }
-.key-card i.match    { background: var(--status-match); box-shadow: 0 0 6px var(--status-match); }
+/* The identity card carries the room's status colour. */
+.detail-card--open     { background: var(--status-open-tint);     border-color: var(--status-open); }
+.detail-card--occupied { background: var(--status-occupied-tint); border-color: var(--status-occupied); }
+.detail-card--match    { background: var(--status-match-tint);    border-color: var(--status-match); }
+.detail-card--unlisted { background: var(--status-unlisted-tint); border-color: var(--line); }
 
-.zoom-controls { bottom: var(--s-4); left: var(--s-4); display: grid; gap: 1px; padding: 3px; }
-.zoom-controls button {
-  width: 34px;
-  height: 34px;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--ink-600);
-  font: 700 var(--fs-lg) var(--font-sans);
-  cursor: pointer;
+/* Title left, status pill hard right. */
+.detail-head { display: flex; align-items: flex-start; gap: var(--s-2); }
+.detail-head > div:first-child { flex: 1; min-width: 0; }
+.detail-head p {
+  margin: 0;
+  font: var(--fs-micro) var(--font-mono);
+  letter-spacing: var(--track-mono);
+  color: var(--ink-500);
 }
-.zoom-controls button:hover { background: var(--surface-sunk); color: var(--brand-600); }
+.detail-head h3 { margin-top: var(--s-1); font-size: var(--fs-xl); color: var(--ink-900); }
+.detail-head .pill { flex: none; margin-left: auto; align-self: center; }
+/* On a tinted card the pill's own tint disappears — give it a solid chip. */
+.detail-card[class*="detail-card--"] .pill { background: rgba(255, 255, 255, .82); }
+.detail-head .icon-btn { margin-left: var(--s-1); }
 
-.room-detail-card {
-  top: var(--s-4);
-  right: var(--s-4);
-  width: 264px;
-  max-height: calc(100% - var(--s-8));
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  padding: var(--s-4);
-}
-.room-detail-stats {
+/* Room / Floor / Pod — the figures are the point, so they are set large. */
+.detail-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--s-2);
   margin-top: var(--s-4);
   padding-top: var(--s-4);
-  border-top: 1px solid var(--line-soft);
+  border-top: 1px solid rgba(21, 23, 27, .10);
 }
-.room-detail-stats div { text-align: center; }
-.room-detail-stats strong { display: block; font: 800 var(--fs-lg) var(--font-sans); color: var(--ink-900); }
-.room-detail-stats small { color: var(--ink-500); font-size: var(--fs-micro); }
+.detail-stats div { display: grid; gap: 2px; }
+.detail-stats span { color: var(--ink-500); font: 600 var(--fs-micro) var(--font-sans); text-transform: uppercase; letter-spacing: .06em; }
+.detail-stats strong { font: 800 var(--fs-xl) var(--font-sans); line-height: 1.1; color: var(--ink-900); }
 
-/* ── 06 Insight row ──────────────────────────────────────────────────────── */
+.detail-card .resident-card { margin-top: var(--s-3); background: rgba(255, 255, 255, .7); border-color: rgba(255, 255, 255, .9); }
+.detail-card .choice-title { margin: 0 0 var(--s-3); }
 
-.insight-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: var(--s-4);
-  margin-top: var(--s-5);
-}
-.insight-tile {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  padding: var(--s-4);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  text-align: left;
-  cursor: pointer;
-  transition: box-shadow var(--t-fast) var(--ease);
-}
-.insight-tile:hover { box-shadow: var(--e-1); }
-.insight-tile--amber { background: var(--status-open-tint); }
-.insight-tile--blue { background: var(--brand-50); }
-.insight-icon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  flex: none;
-  border-radius: var(--r-pill);
-  background: var(--surface);
-  font: var(--fs-lg) Georgia, serif;
-}
-.insight-tile--amber .insight-icon { color: #8a6011; }
-.insight-tile--blue .insight-icon { color: var(--brand-600); }
-.insight-copy { flex: 1; min-width: 0; display: grid; gap: 2px; }
-.insight-copy small { color: var(--ink-500); font-size: var(--fs-xs); }
-.insight-copy strong { font: 800 var(--fs-lg) var(--font-sans); color: var(--ink-900); }
-.insight-chevron { color: var(--ink-400); font-size: var(--fs-lg); }
-.privacy-tile {
+/* ── 07 Status key ──────────────────────────────────────────────────────── */
+
+/* Lives in the toolbar. Four labels, nothing more — each one's explanation is
+   a tooltip on hover or keyboard focus, so the key can't crowd the controls
+   yet no colour goes unexplained. */
+.key { display: flex; align-items: center; gap: var(--s-5); }
+.key-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--s-2);
-  padding: var(--s-4);
-  max-width: 220px;
-  color: var(--ink-500);
+  cursor: help;
+}
+.key-item i { display: inline-block; height: 10px; width: 10px; flex: none; border-radius: 3px; }
+.key-item b { color: var(--ink-600); font: 700 var(--fs-xs) var(--font-sans); white-space: nowrap; }
+.key-item:hover b, .key-item:focus-visible b { color: var(--ink-900); }
+.key-item i.unlisted { background: var(--status-unlisted); }
+.key-item i.occupied { background: var(--status-occupied); }
+.key-item i.open     { background: var(--status-open); box-shadow: 0 0 6px var(--status-open); }
+.key-item i.match    { background: var(--status-match); box-shadow: 0 0 6px var(--status-match); }
+
+.key-item small {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  z-index: 30;
+  width: max-content;
+  max-width: 210px;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  background: var(--ink-900);
+  color: #fff;
   font-size: var(--fs-micro);
   line-height: var(--lh-base);
+  text-align: center;
+  opacity: 0;
+  transform: translate(-50%, -4px);
+  pointer-events: none;
+  box-shadow: var(--e-3);
+  transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
 }
-.privacy-icon { flex: none; color: var(--ink-400); font-size: var(--fs-xl); }
+.key-item small:before {   /* pointer back up to the swatch */
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-bottom-color: var(--ink-900);
+}
+.key-item:hover small, .key-item:focus-visible small { opacity: 1; transform: translate(-50%, 0); }
 
-/* ── 07 Views ────────────────────────────────────────────────────────────── */
+/* Honesty line — quiet, under the card, not a band inside it. */
+.privacy-note {
+  margin: var(--s-3) var(--s-1) 0;
+  text-align: right;
+  color: var(--ink-400);
+  font-size: var(--fs-micro);
+}
+
+/* ── 08 Views ────────────────────────────────────────────────────────────── */
 
 /* 3D viewer */
 .three-view { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--scene); }
@@ -892,8 +1163,8 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .site-card strong { display: block; margin-top: var(--s-2); font-size: var(--fs-lg); }
 .site-card > span { display: block; margin: 3px 0 var(--s-3); color: var(--ink-500); font-size: var(--fs-micro); }
 
-/* Floor plan — full-bleed; floor selection is the shared toolbar dropdown,
-   room detail is the shared floating card, so this view is the drawing only. */
+/* Floor plan — the drawing only. Floors are the rail to its left and room
+   detail is the column to its right, both shared with the 3D view. */
 .floor-view { height: 100%; background: var(--surface); }
 .floor-canvas {
   position: relative;
@@ -918,11 +1189,6 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 }
 .floor-plan { width: 100%; height: 100%; overflow: visible; }
 .blueprint { opacity: .84; }
-.plan-wrap.zoomed .floor-plan {
-  transform: scale(1.35);
-  transform-origin: 50% 48%;
-  transition: transform var(--t-base) var(--ease);
-}
 
 .room {
   stroke: transparent;
@@ -938,6 +1204,11 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .room.match { fill: var(--status-match); }
 .room.selected-room { opacity: .9; stroke: var(--ink-900); stroke-width: 4; }
 
+/* A cell the drawing shows but the building doesn't have: solid dark, struck
+   through, no pointer. Deliberately wordless — the cross reads on its own. */
+.room.void { fill: var(--status-unlisted); opacity: .58; cursor: default; pointer-events: none; }
+.room-cross { stroke: var(--surface); stroke-width: 5; stroke-linecap: round; opacity: .85; pointer-events: none; }
+
 /* Pod-hostel plan overlay (Vivekananda, S N Bose) */
 .pod-plan-outline { display: none; }
 .pod-layout .blueprint { opacity: 0; }
@@ -951,9 +1222,10 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   text-anchor: middle;
 }
 
-/* ── 08 Room detail card ─────────────────────────────────────────────────── */
+/* ── 09 Room detail panel ─────────────────────────────────────────────────── */
 
-.panel-empty { padding: var(--s-4) 0; color: var(--ink-500); text-align: center; }
+/* Sits in the middle of the empty detail column rather than clinging to the top. */
+.panel-empty { margin: auto 0; padding: var(--s-4) 0; color: var(--ink-500); text-align: center; }
 .empty-icon {
   display: grid;
   place-items: center;
@@ -999,9 +1271,41 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 }
 .detail-list div { display: flex; justify-content: space-between; color: var(--ink-500); font-size: var(--fs-micro); }
 .detail-list strong { color: var(--ink-800); font-weight: 600; }
+
+/* Ranked destination choices — shown for your own listing and for anyone
+   else who is open to a swap. */
+.choice-title { margin: 0 0 var(--s-2); color: var(--ink-500); font: 700 var(--fs-micro) var(--font-sans); text-transform: uppercase; letter-spacing: .06em; }
+.choice-list { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; counter-reset: choice; }
+.choice-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface-sunk);
+}
+.choice-list li:before {
+  counter-increment: choice;
+  content: counter(choice);
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: var(--r-pill);
+  background: var(--brand-600);
+  color: #fff;
+  font: 700 var(--fs-micro) var(--font-mono);
+}
+.choice-list span { flex: 1; min-width: 0; color: var(--ink-900); font: 700 var(--fs-xs) var(--font-sans); }
+.choice-list small { color: var(--ink-500); font-size: var(--fs-micro); }
+.choice-none { margin: 0; color: var(--ink-400); font-size: var(--fs-micro); }
+.panel-edit { margin-top: var(--s-1); min-height: 46px; border-radius: var(--r-md); }
+.panel-hint { margin: var(--s-3) 0 0; color: var(--ink-400); font-size: var(--fs-micro); text-align: center; }
 .panel-detail .btn { margin-top: var(--s-4); }
 
-/* ── 09 Modals + requests ────────────────────────────────────────────────── */
+/* ── 10 Modals + requests ────────────────────────────────────────────────── */
 
 .modal-backdrop {
   position: fixed;
@@ -1165,16 +1469,15 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 }
 .notice b { font-size: var(--fs-md); line-height: 1; }
 
-/* ── 10 Component refinements ───────────────────────────────────────────── */
+/* ── 11 Component refinements ───────────────────────────────────────────── */
 
 body { background: var(--canvas); }
 .brand small { color: var(--ink-500); }
 .nav-item { color: var(--ink-600); font-size: var(--fs-sm); }
 .nav-item.active { box-shadow: inset 0 0 0 1px var(--brand-100); }
 
-/* The Key card now occupies the 3D scene's top-left corner, and the room
-   detail card covers what the readout used to say — both on-canvas text
-   overlays are redundant with the floating cards and hidden. */
+/* The toolbar names the hostel and the detail column reports the clicked
+   room, so both on-canvas text overlays would only repeat them. */
 .hero-model .three-title, .hero-model .three-readout { display: none; }
 
 .segmented { border: 1px solid var(--line); border-radius: var(--r-pill); padding: var(--s-1); background: var(--surface); }
@@ -1192,16 +1495,8 @@ body { background: var(--canvas); }
 .field-grid label { gap: var(--s-2); color: var(--ink-800); font-size: var(--fs-xs); }
 .field-grid input, .field-grid select { min-height: 50px; border-color: var(--line); border-radius: var(--r-md); background: var(--surface-sunk); color: var(--ink-900); font-size: var(--fs-sm); }
 .field-grid input::placeholder { color: var(--ink-500); }
-.move-choice { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); padding-top: var(--s-2); }
-.move-choice legend { grid-column: 1 / -1; margin-bottom: var(--s-1); color: var(--ink-900); font-size: var(--fs-md); }
-.move-choice label { min-height: 86px; align-items: flex-start; gap: var(--s-3); padding: var(--s-4); border: 2px solid var(--line); border-radius: var(--r-lg); background: var(--surface-sunk); color: var(--ink-800); font-size: var(--fs-sm); line-height: var(--lh-base); cursor: pointer; }
-.move-choice label:has(input:checked) { border-color: var(--brand-600); background: var(--brand-50); box-shadow: 0 0 0 4px var(--brand-100); }
-.move-choice input { min-height: auto; margin-top: 3px; accent-color: var(--brand-600); }
-.move-details { padding: var(--s-5); border-radius: var(--r-lg); background: var(--surface-sunk); }
-.preference-grid { gap: var(--s-3); }
-.field-grid .btn--primary { min-height: 54px; border-radius: var(--r-pill); font-size: var(--fs-sm); box-shadow: var(--brand-action-shadow); }
 
-/* ── 11 Toast, responsive, a11y ─────────────────────────────────────────── */
+/* ── 12 Toast, responsive, a11y ─────────────────────────────────────────── */
 
 .toast {
   position: fixed;
@@ -1221,36 +1516,64 @@ body { background: var(--canvas); }
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-@media (max-width: 1240px) {
+@media (max-width: 1280px) {
+  :root { --detail-w: 280px; }
   .page { max-width: 100%; }
-  .page-intro h1 { font-size: var(--fs-3xl); }
-  .room-detail-card { width: 232px; }
+  .head-stats { gap: var(--s-2); }
+  .head-stat { padding: var(--s-2) var(--s-3); }
+  .toolbar { gap: var(--s-3); }
+  .key { gap: var(--s-3); }
+}
+
+/* The detail column stops being useful narrow — drop it below the stage and
+   let the artifact keep the full width of the card. */
+@media (max-width: 1060px) {
+  .stage-grid {
+    grid-template-columns: 60px minmax(0, 1fr);
+    grid-template-areas: "rail stage" "detail detail";
+    height: auto;
+  }
+  .panel-stage { height: 60vh; min-height: 400px; }
+  .room-detail {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    max-height: 320px;
+  }
+  .page-head { align-items: flex-start; flex-direction: column; gap: var(--s-4); }
+  .head-stats { width: 100%; gap: var(--s-8); }
+  .head-stat { text-align: left; }
+  .head-activity { margin-left: auto; }
 }
 
 @media (max-width: 980px) {
-  .insight-row { grid-template-columns: 1fr 1fr; }
-  .privacy-tile { grid-column: 1 / -1; max-width: none; }
-  .room-detail-card { width: 210px; padding: var(--s-3); }
-  .key-card { padding: var(--s-2) var(--s-3); }
+  .topbar { min-height: 0; flex-wrap: wrap; }
+  .topbar-actions { width: 100%; margin-left: 0; }
+  .topbar-actions .btn { flex: 1; }
 }
 
 @media (max-width: 690px) {
-  .page { padding: var(--s-5) var(--s-4) var(--s-8); }
-  .topbar { height: auto; flex-wrap: wrap; gap: var(--s-3); padding: var(--s-3); }
-  .main-nav { order: 3; width: 100%; }
-  .nav-item { flex: 1; justify-content: center; }
-  .topbar-cta { width: auto; }
-  .page-intro h1 { font-size: var(--fs-2xl); }
+  .page { padding: var(--s-4) var(--s-4) var(--s-8); }
+  .topbar { gap: var(--s-3); padding: var(--s-4); border-radius: var(--r-xl); }
+  .topbar-id { flex-wrap: wrap; gap: var(--s-3); }
+  .topbar-tag { padding-left: 0; border-left: 0; }
+  .topbar-actions { flex-direction: column; align-items: stretch; }
+  .topbar:after { display: none; }
+  .choice-tiles, .choice-tiles--three { grid-template-columns: 1fr; }
+  .page-head-copy h1 { font-size: var(--fs-2xl); }
+  .head-stat strong { font-size: var(--fs-xl); }
+  .head-activity { display: none; }   /* the same numbers are already above it */
   .toolbar { height: auto; padding: var(--s-3); flex-wrap: wrap; row-gap: var(--s-2); }
   .toolbar > * { flex: none; }
-  .floor-select-wrap { margin-left: 0; }
   .building-choice { padding: var(--s-2) var(--s-1); }
   .building-menu { left: 0; width: min(296px, calc(100vw - 34px)); grid-template-columns: 1fr; max-height: 250px; }
   .seg-btn { padding: var(--s-2); }
-  .panel-stage { height: 420px; }
-  .key-card span:not(:first-child) { display: none; }
-  .room-detail-card { width: 176px; padding: var(--s-3); font-size: var(--fs-xs); }
-  .insight-row { grid-template-columns: 1fr; }
+  .stage-grid { grid-template-columns: 52px minmax(0, 1fr); }
+  .panel-stage { height: 420px; min-height: 0; }
+  .floor-rail { padding: var(--s-3) 0; }
+  .floor-rail button { width: 34px; }
+  .key { order: 3; width: 100%; justify-content: space-between; gap: var(--s-2); }
+  .view-switch { margin-left: 0; }
+  .privacy-note { text-align: left; }
   .site-card, .map-card { right: var(--s-3); top: 58px; width: 168px; padding: var(--s-3); }
   .floor-canvas { padding: var(--s-3); }
   .friend-city-hud { left: var(--s-3); bottom: var(--s-3); width: 224px; }

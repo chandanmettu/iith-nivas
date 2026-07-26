@@ -9,43 +9,75 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
     <!-- Bump ?v= on every CSS/JS change — shared hosting CDNs serve stale assets otherwise. -->
-    <link rel="stylesheet" href="./styles.css?v=23" />
+    <link rel="stylesheet" href="./styles.css?v=32" />
   </head>
   <body>
-    <!-- Layout: top navbar, a plain-language intro line, then one explorer card
-         with the artifact full-bleed and small floating context cards over it
-         (key, zoom, room detail) — nothing boxes the artifact in a column. -->
+    <!-- Layout: a header pill, a headline row with the hostel's live counts on
+         the right, then one explorer card — floors rail left, artifact centre,
+         room detail right. The toolbar carries the picker, the status key and
+         the view switch. Nothing floats over the artifact, so nothing can
+         overlap anything else. -->
     <div class="app-shell">
-      <header class="topbar">
-        <a class="brand" href="#" aria-label="Nivas home">
-          <span class="brand-mark"><i></i><i></i><i></i></span>
-          <span>NIVAS<small>IIT HYDERABAD</small></span>
-        </a>
-
-        <nav class="main-nav" aria-label="Primary navigation">
-          <button class="nav-item active" data-tab="explore"><span class="nav-icon">⌘</span> Explore hostels</button>
-          <button class="nav-item" data-tab="listing"><span class="nav-icon">⇄</span> My swap listing</button>
-        </nav>
-
-        <button class="btn btn--primary topbar-cta" id="hero-create-listing">Create my swap listing <b>→</b></button>
-      </header>
-
       <main class="page">
-        <div class="page-intro">
-          <h1 id="page-title">Find the room swap that fits<em>.</em></h1>
+        <!-- Branded band. Deliberately carries no live counts: those are in the
+             row below and repeating them here said nothing new. What fills the
+             width instead is what the board covers, and the two actions. -->
+        <header class="topbar">
+          <div class="topbar-id">
+            <a class="brand" href="#" aria-label="Nivas home">
+              <span class="brand-mark"><i></i><i></i><i></i></span>
+              <span>NIVAS<small>IIT HYDERABAD</small></span>
+            </a>
+            <div class="topbar-tag">
+              <span>STUDENT ROOM SWAP</span>
+              <small>16 hostels · 9 floors · 30 rooms per floor</small>
+            </div>
+          </div>
+
+          <div class="topbar-actions">
+            <button class="btn btn--outline" id="open-feedback">Feature request</button>
+            <!-- One entry point to the listing form. The old nav tab did exactly
+                 the same thing as this button, so it's gone. -->
+            <button class="btn btn--primary topbar-cta" id="hero-create-listing">Create my swap listing <b>→</b></button>
+          </div>
+        </header>
+
+        <div class="page-head">
+          <div class="page-head-copy">
+            <h1 id="page-title">Find the room swap that fits<em>.</em></h1>
+            <p>Browse student-posted listings in <strong id="head-hostel">Bhabha</strong>, floor by floor.</p>
+          </div>
+
+          <!-- Live counts for the selected hostel — beside the headline, not
+               stranded under the artifact. -->
+          <div class="head-stats" aria-label="Listing counts for the selected hostel">
+            <div class="head-stat"><strong id="rooms-count">0</strong><small>listed</small></div>
+            <div class="head-stat head-stat--open"><strong id="open-swap-count">0</strong><small>open to swap</small></div>
+            <div class="head-stat head-stat--match"><strong id="match-count">0</strong><small>matches for you</small></div>
+            <button class="btn btn--secondary head-activity" id="swap-activity">Swap activity <b>↗</b></button>
+          </div>
         </div>
 
         <section class="explorer-card" aria-label="Hostel explorer">
           <div class="toolbar" aria-label="Hostel explorer controls">
             <div class="building-picker" role="group" aria-label="Building selector">
-              <button class="picker-arrow" id="prev-building" aria-label="Previous hostel">←</button>
+              <!-- Dropdown only. The prev/next arrows duplicated it for no gain. -->
               <button class="building-choice" id="building-choice" aria-expanded="false" aria-haspopup="listbox" aria-controls="building-menu">
                 <span class="building-dot"></span>
                 <strong id="building-name">Bhabha</strong>
                 <b>⌄</b>
               </button>
-              <button class="picker-arrow" id="next-building" aria-label="Next hostel">→</button>
               <div class="building-menu hidden" id="building-menu" role="listbox" aria-label="IIT Hyderabad hostels"></div>
+            </div>
+
+            <!-- Status key, in the toolbar where the view switch used to sit.
+                 Four labels only; each one's meaning is a tooltip on hover or
+                 keyboard focus, so nothing is unexplained but nothing shouts. -->
+            <div class="key" id="legend" aria-label="Room status key">
+              <span class="key-item" tabindex="0"><i class="unlisted"></i><b>Unlisted</b><small role="tooltip">Nobody has posted about this room</small></span>
+              <span class="key-item" tabindex="0"><i class="occupied"></i><b>Registered</b><small role="tooltip">Resident listed it, isn’t moving</small></span>
+              <span class="key-item" tabindex="0"><i class="open"></i><b>Open to swap</b><small role="tooltip">Resident wants to move</small></span>
+              <span class="key-item" tabindex="0"><i class="match"></i><b>Match for you</b><small role="tooltip">You each want the other’s room</small></span>
             </div>
 
             <div class="segmented view-switch" role="group" aria-label="Map view">
@@ -55,14 +87,18 @@
               <button class="seg-btn active" data-view="3d"><span>◈</span> 3D building</button>
               <button class="seg-btn" data-view="floor"><span>▦</span> Floor plan</button>
             </div>
-
-            <label class="floor-select-wrap">
-              <span>⌂</span>
-              <select id="floor-select" aria-label="Floor"></select>
-            </label>
           </div>
 
-          <div class="panel-stage">
+          <div class="stage-grid">
+            <!-- Floors live here, on the left, inside the card — not in a
+                 dropdown in the far corner. -->
+            <aside class="floor-rail" aria-label="Floor selector">
+              <span class="floor-rail-label">FLOOR</span>
+              <div class="floor-rail-buttons" id="floor-buttons"></div>
+              <button class="floor-all" id="floor-all" data-floor="all">ALL</button>
+            </aside>
+
+            <div class="panel-stage">
             <div class="hero-model">
               <div class="three-view" id="three-view">
                 <canvas id="hostel-3d-canvas" aria-label="Interactive 3D IIT Hyderabad hostel building"></canvas>
@@ -128,53 +164,22 @@
               </div>
             </div>
 
-            <!-- Floating context cards — shared by every view in .panel-stage. -->
-            <div class="key-card" id="legend">
-              <p>Key</p>
-              <span><i class="unlisted"></i> Unlisted</span>
-              <span><i class="occupied"></i> Registered</span>
-              <span><i class="open"></i> Open to swap</span>
-              <span><i class="match"></i> Match for you</span>
             </div>
 
-            <div class="zoom-controls" role="group" aria-label="Zoom">
-              <button id="zoom-in" aria-label="Zoom in">+</button>
-              <button id="zoom-out" aria-label="Zoom out">−</button>
-              <button id="zoom-reset" aria-label="Reset view">⟲</button>
-            </div>
-
-            <aside class="room-detail-card" id="room-panel">
+            <!-- The right column is only ever room detail. -->
+            <aside class="room-detail" id="room-panel" aria-label="Room detail">
               <div class="panel-empty">
                 <span class="empty-icon">⌁</span>
                 <h3>Choose a room</h3>
-                <p>Click a room to see its student-submitted swap status.</p>
+                <p>Click any room in the building or on the floor plan to see what its resident has posted.</p>
               </div>
               <div class="panel-detail hidden" id="panel-detail"></div>
-              <div class="room-detail-stats">
-                <div><strong id="rooms-count">0</strong><small>listed</small></div>
-                <div><strong id="open-swap-count">0</strong><small>open</small></div>
-                <div><strong id="match-count">0</strong><small>matches</small></div>
-              </div>
             </aside>
           </div>
+
         </section>
 
-        <div class="insight-row">
-          <button class="insight-tile insight-tile--amber" id="insight-want">
-            <span class="insight-icon">↗</span>
-            <span class="insight-copy"><small>Want to move to</small><strong id="insight-want-value">Bhabha 0</strong></span>
-            <span class="insight-chevron">›</span>
-          </button>
-          <button class="insight-tile insight-tile--blue" id="insight-wanted">
-            <span class="insight-icon">⇄</span>
-            <span class="insight-copy"><small id="insight-wanted-label">Bhabha residents want</small><strong id="insight-wanted-value">— 0</strong></span>
-            <span class="insight-chevron">›</span>
-          </button>
-          <div class="privacy-tile">
-            <span class="privacy-icon">⛨</span>
-            <span>Student-submitted listings · not official allocation data</span>
-          </div>
-        </div>
+        <p class="privacy-note">Student-submitted listings · not official allocation data</p>
       </main>
     </div>
 
@@ -184,26 +189,51 @@
         <p class="modal-kicker">YOUR SWAP LISTING</p>
         <h2 id="profile-modal-title">Create your listing</h2>
         <p class="modal-copy">Set your current room, then choose whether you’re open to a swap.</p>
-        <form id="profile-form" class="field-grid">
-          <label>Full name<input name="name" required maxlength="64" placeholder="Your full name" autocomplete="name" /></label>
-          <label>IIT-H email<input name="email" type="email" required maxlength="128" placeholder="you@iith.ac.in" autocomplete="email" /></label>
-          <label>Phone number<input name="phone" type="tel" required maxlength="24" placeholder="Your private contact number" autocomplete="tel" /></label>
-          <label>Current hostel<select name="hostel" required></select></label>
-          <label>Current room<input name="room" required inputmode="numeric" maxlength="4" placeholder="e.g. 912" title="Use the room number only: 912 means ninth floor, room 12." /></label>
+        <!-- Two rows of details: name/email/phone, then hostel/room. Every
+             <select> here is upgraded to the app's own dropdown by
+             enhanceSelect() in app.js — no native select chrome. -->
+        <form id="profile-form" class="form-grid">
+          <label class="span-2">Full name<input name="name" required maxlength="64" placeholder="Your full name" autocomplete="name" /></label>
+          <label class="span-2">IIT-H email<input name="email" type="email" required maxlength="128" placeholder="you@iith.ac.in" autocomplete="email" /></label>
+          <label class="span-2">Phone number<input name="phone" type="tel" required maxlength="24" placeholder="Kept private, never shown" autocomplete="tel" /></label>
+          <label class="span-3">Current hostel<select name="hostel" required></select></label>
+          <label class="span-3">Current room<input name="room" required inputmode="numeric" maxlength="4" placeholder="Room number, e.g. 912" title="Use the room number only: 912 means ninth floor, room 12." /></label>
+
           <fieldset class="move-choice">
             <legend>Are you willing to move?</legend>
-            <label><input type="radio" name="willingToMove" value="yes" required /> Yes, show my room as open to swap</label>
-            <label><input type="radio" name="willingToMove" value="no" required /> No, show it as registered only</label>
+            <p class="field-help">This is the one answer that decides how your room appears to everyone else.</p>
+            <div class="choice-tiles">
+              <label class="choice-tile choice-tile--open">
+                <input type="radio" name="willingToMove" value="yes" required />
+                <span class="choice-mark">⇄</span>
+                <strong>Yes, I want to swap</strong>
+                <small>Your room shows as <b>Open to swap</b> and can be matched with someone who wants it.</small>
+              </label>
+              <label class="choice-tile choice-tile--stay">
+                <input type="radio" name="willingToMove" value="no" required />
+                <span class="choice-mark">⌂</span>
+                <strong>No, I’m staying put</strong>
+                <small>Your room shows as <b>Registered</b>. You’re on the map, but nobody will ask.</small>
+              </label>
+            </div>
           </fieldset>
+
           <div class="move-details hidden" id="move-details">
-            <p class="u-label">Where would you like to move? (up to three choices)</p>
+            <div class="section-head">
+              <h3>Where would you like to move?</h3>
+              <p>Up to three choices, in order of preference. A pod is optional.</p>
+            </div>
             <div class="preference-grid">
-              <label>First choice<select name="preference1Hostel"></select><select name="preference1Pod" aria-label="First-choice pod"></select></label>
-              <label>Second choice<select name="preference2Hostel"></select><select name="preference2Pod" aria-label="Second-choice pod"></select></label>
-              <label>Third choice<select name="preference3Hostel"></select><select name="preference3Pod" aria-label="Third-choice pod"></select></label>
+              <div class="preference-row"><span class="preference-rank">1</span><select name="preference1Hostel" aria-label="First-choice hostel"></select><select name="preference1Pod" aria-label="First-choice pod"></select></div>
+              <div class="preference-row"><span class="preference-rank">2</span><select name="preference2Hostel" aria-label="Second-choice hostel"></select><select name="preference2Pod" aria-label="Second-choice pod"></select></div>
+              <div class="preference-row"><span class="preference-rank">3</span><select name="preference3Hostel" aria-label="Third-choice hostel"></select><select name="preference3Pod" aria-label="Third-choice pod"></select></div>
             </div>
           </div>
-          <button class="btn btn--primary" type="submit">Save my listing <b>→</b></button>
+
+          <div class="form-actions">
+            <button class="btn btn--ghost hidden" type="button" id="delete-listing">Remove my listing</button>
+            <button class="btn btn--primary" type="submit">Save my listing <b>→</b></button>
+          </div>
         </form>
       </section>
     </div>
@@ -218,9 +248,59 @@
       </section>
     </div>
 
+    <!-- Feature request / bug report. With no backend this opens the student's
+         mail client with everything pre-filled; set NIVAS_FEEDBACK_ENDPOINT to
+         post it to a Google Apps Script instead. See app.js sendFeedback(). -->
+    <div class="modal-backdrop hidden" id="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
+      <section class="modal-card">
+        <button class="icon-btn modal-close" data-close-modal aria-label="Close">×</button>
+        <p class="modal-kicker">TELL US WHAT TO BUILD</p>
+        <h2 id="feedback-modal-title">Feature request or bug</h2>
+        <p class="modal-copy">Nivas is built by a student, for students. If something is broken or missing, say so — it goes straight to the person who maintains it.</p>
+
+        <form id="feedback-form" class="form-grid">
+          <label class="span-3">Your name<input name="name" required maxlength="64" placeholder="Your full name" autocomplete="name" /></label>
+          <label class="span-3">Email to reply to<input name="email" type="email" required maxlength="128" placeholder="you@iith.ac.in" autocomplete="email" /></label>
+          <label class="span-3"><span class="field-label">Phone <i class="field-optional">optional</i></span><input name="phone" type="tel" maxlength="24" placeholder="Only if you'd rather be called" autocomplete="tel" /></label>
+          <label class="span-3"><span class="field-label">Your hostel <i class="field-optional">optional</i></span><select name="hostel"></select></label>
+
+          <fieldset class="move-choice">
+            <legend>What is this about?</legend>
+            <div class="choice-tiles choice-tiles--three">
+              <label class="choice-tile choice-tile--idea">
+                <input type="radio" name="kind" value="Feature request" required checked />
+                <span class="choice-mark">✦</span>
+                <strong>Feature request</strong>
+                <small>Something you wish Nivas could do.</small>
+              </label>
+              <label class="choice-tile choice-tile--bug">
+                <input type="radio" name="kind" value="Bug report" />
+                <span class="choice-mark">⚠</span>
+                <strong>Bug</strong>
+                <small>Something is broken or wrong.</small>
+              </label>
+              <label class="choice-tile choice-tile--other">
+                <input type="radio" name="kind" value="Something else" />
+                <span class="choice-mark">✉</span>
+                <strong>Something else</strong>
+                <small>Anything you want to pass on.</small>
+              </label>
+            </div>
+          </fieldset>
+
+          <label class="span-6">Tell us more<textarea name="message" required maxlength="1200" rows="5" placeholder="What happened, or what would you like to see? The more specific, the faster it gets fixed."></textarea></label>
+
+          <div class="form-actions">
+            <p class="form-note" id="feedback-note">Opens your mail app with this filled in.</p>
+            <button class="btn btn--primary" type="submit">Send it <b>→</b></button>
+          </div>
+        </form>
+      </section>
+    </div>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./app.js?v=16"></script>
-    <script type="module" src="./viewer3d.js?v=9"></script>
+    <script src="./app.js?v=24"></script>
+    <script type="module" src="./viewer3d.js?v=11"></script>
   </body>
 </html>

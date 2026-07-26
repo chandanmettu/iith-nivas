@@ -7,8 +7,17 @@
 
 const STORAGE_KEY = "nivas-swap-v1";
 const LISTINGS_ENDPOINT = window.NIVAS_LISTINGS_ENDPOINT || "";
+/* Where feature requests and bug reports go. With no backend the form opens
+   the student's mail client pre-filled; point NIVAS_FEEDBACK_ENDPOINT at a
+   Google Apps Script (same pattern as the listings feed) to collect them
+   silently instead. */
+const FEEDBACK_TO = "ms24btech11021@iith.ac.in";
+const FEEDBACK_ENDPOINT = window.NIVAS_FEEDBACK_ENDPOINT || "";
 const FLOOR_COUNT = 9;
-const ROOMS_PER_FLOOR = 30;
+const ROOMS_PER_FLOOR = 30;   /* pods of 8 / 8 / 6 / 8 — see roomShapes */
+/* Pods are 8 / 8 / 6 / 8, so room -> pod can't be arithmetic. */
+const POD_SIZES = [8, 8, 6, 8];
+const POD_OF_ROOM = POD_SIZES.flatMap((size, index) => Array(size).fill(index + 1));
 const DEMO_MODE = true;
 
 const HOSTELS = [
@@ -75,29 +84,59 @@ let db = { hostels: [], podHostels: [], listings: [] };
 
 /* ── Room geometry ───────────────────────────────────────────────────────── */
 
-/* The supplied plan repeats a radial residential pod. These polygons sit
-   inside the drawn thick-wall room outlines—not over corridors or furniture.
-   The plan’s circulation order is Pod 1 (upper-left), Pod 2 (lower-middle),
-   Pod 3 (lower-right, six rooms), then Pod 4 (upper-middle). */
-const podRoomPolygon = [
-  [[140,128],[248,128],[248,242],[140,242]],
-  [[250,128],[344,128],[344,235],[250,235]],
-  [[440,245],[528,245],[528,318],[440,318]],
-  [[440,325],[528,325],[528,398],[440,398]],
-  [[258,445],[338,445],[338,540],[258,540]],
-  [[348,445],[418,445],[418,540],[348,540]],
-  [[140,253],[235,253],[235,335],[140,335]],
-  [[140,345],[235,345],[235,425],[140,425]]
-];
-function roomPath(points, offsetX = 0, offsetY = 0) {
-  return points.map(([x, y], index) => `${index ? "L" : "M"}${x + offsetX} ${y + offsetY}`).join(" ") + " Z";
-}
+/* Traced from the drawing, not hand-estimated: the wall mask of
+   assets/iith-typical-floor-plan.png is dilated to seal doorways, each room
+   interior flood-filled from a seed, the region recovered and reduced to its
+   outline. See docs/trace-rooms.py — re-run it if the drawing is replaced.
+   Rooms are chamfered pentagons because the real rooms are cut at an angle
+   where they meet the octagonal atrium. Don't "tidy" them into rectangles.
+
+   THIRTY rooms per floor: pods of 8 / 8 / 6 / 8.
+     pod 1 = 01-08  upper-left       pod 3 = 17-22  upper-right (six rooms)
+     pod 2 = 09-16  lower-middle     pod 4 = 23-30  lower-right
+   Pod numbering follows Chandan's labelling of the plan. Pods 2 and 4 are the
+   same layout rotated 180°, so their service core sits at the opposite corner. */
 const roomShapes = [
-  ...podRoomPolygon.map(points => roomPath(points)),
-  ...podRoomPolygon.map(points => roomPath(points, 330, 360)),
-  // The lower-right pod has services in its east arm; only six outlined rooms.
-  ...[0, 1, 4, 5, 6, 7].map(index => roomPath(podRoomPolygon[index], 1040, 360)),
-  ...podRoomPolygon.map(points => roomPath(points, 710, 0))
+  /*  1 · pod 1 N-left   */ "M280 157 L294 143 L330 143 L344 157 L344 246 L327 262 L279 216 Z",
+  /*  2 · pod 1 N-right  */ "M349 157 L363 143 L400 143 L414 157 L414 217 L365 262 L349 246 Z",
+  /*  3 · pod 1 E-top    */ "M422 319 L470 270 L527 271 L541 285 L541 321 L527 335 L438 335 Z",
+  /*  4 · pod 1 E-bot    */ "M422 357 L439 340 L527 340 L541 354 L541 391 L527 405 L467 405 Z",
+  /*  5 · pod 1 S-right  */ "M349 430 L366 413 L414 458 L414 518 L400 532 L363 532 L349 518 Z",
+  /*  6 · pod 1 S-left   */ "M328 413 L344 429 L344 518 L330 532 L294 532 L280 518 L279 464 Z",
+  /*  7 · pod 1 W-bot    */ "M152 354 L166 340 L255 340 L272 357 L226 405 L166 405 L152 391 Z",
+  /*  8 · pod 1 W-top    */ "M152 285 L166 271 L227 271 L272 319 L256 335 L166 335 L152 321 Z",
+  /*  9 · pod 2 N-left   */ "M636 511 L650 497 L686 497 L700 511 L700 600 L683 617 L635 571 Z",
+  /* 10 · pod 2 N-right  */ "M705 511 L719 497 L755 497 L769 511 L769 572 L722 617 L705 600 Z",
+  /* 11 · pod 2 E-top    */ "M826 626 L884 627 L898 641 L898 677 L884 691 L794 691 L778 675 Z",
+  /* 12 · pod 2 E-bot    */ "M794 696 L884 696 L898 710 L898 746 L884 760 L822 760 L778 713 Z",
+  /* 13 · pod 2 S-right  */ "M705 786 L722 769 L770 815 L769 874 L755 888 L719 888 L705 874 Z",
+  /* 14 · pod 2 S-left   */ "M684 769 L700 785 L700 874 L686 888 L650 888 L636 874 L635 817 Z",
+  /* 15 · pod 2 W-bot    */ "M506 710 L520 696 L611 696 L627 713 L581 761 L521 760 L506 740 Z",
+  /* 16 · pod 2 W-top    */ "M506 641 L520 627 L583 627 L627 675 L611 691 L522 691 L506 675 Z",
+  /* 17 · pod 3 N-left   */ "M991 157 L1005 143 L1042 143 L1056 157 L1056 246 L1039 262 L991 217 Z",
+  /* 18 · pod 3 N-right  */ "M1061 157 L1075 143 L1111 143 L1125 157 L1125 218 L1077 262 L1061 246 Z",
+  /* 19 · pod 3 E-top    */ "M1182 270 L1239 271 L1253 285 L1253 321 L1239 335 L1150 335 L1134 319 Z",
+  /* 20 · pod 3 E-bot    */ "M1150 340 L1239 340 L1253 354 L1253 391 L1239 405 L1179 405 L1134 357 Z",
+  /* 21 · pod 3 W-bot    */ "M863 354 L877 340 L966 340 L983 357 L937 405 L877 405 L863 391 Z",
+  /* 22 · pod 3 W-top    */ "M863 285 L877 271 L938 271 L983 319 L967 335 L877 335 L863 321 Z",
+  /* 23 · pod 4 N-left   */ "M1347 511 L1361 497 L1398 497 L1412 511 L1412 600 L1395 617 L1347 571 Z",
+  /* 24 · pod 4 N-right  */ "M1417 511 L1431 497 L1467 497 L1481 511 L1481 572 L1433 616 L1417 600 Z",
+  /* 25 · pod 4 E-top    */ "M1535 626 L1595 627 L1609 641 L1609 677 L1595 691 L1506 691 L1490 675 Z",
+  /* 26 · pod 4 E-bot    */ "M1506 696 L1595 696 L1609 710 L1609 746 L1595 760 L1534 760 L1490 713 Z",
+  /* 27 · pod 4 S-right  */ "M1417 786 L1434 769 L1481 814 L1481 874 L1467 888 L1431 888 L1417 874 Z",
+  /* 28 · pod 4 S-left   */ "M1347 814 L1396 769 L1412 785 L1412 874 L1398 888 L1361 888 L1347 874 Z",
+  /* 29 · pod 4 W-bot    */ "M1220 710 L1234 696 L1322 696 L1339 713 L1293 761 L1234 760 L1220 746 Z",
+  /* 30 · pod 4 W-top    */ "M1220 641 L1234 627 L1293 626 L1339 674 L1322 691 L1234 691 L1220 677 Z",
+]
+
+/* The two cells pod 3 is missing. The drawing shows a room here; the building
+   has none, which is what makes pod 3 a six-room pod. Drawn struck through and
+   inert so students can see the cell is not an option, never numbered, never
+   counted. If the wrong pair is marked, move MISSING in docs/trace-rooms.py
+   and regenerate, or just swap these two paths for the correct cells. */
+const voidShapes = [
+  /* pod 3 S-right  */ "M1061 430 L1078 413 L1125 458 L1125 518 L1111 532 L1075 532 L1061 518 Z",
+  /* pod 3 S-left   */ "M992 457 L1039 412 L1056 429 L1056 518 L1042 532 L1005 532 L991 518 Z",
 ];
 
 /* ── Local state ─────────────────────────────────────────────────────────── */
@@ -141,8 +180,13 @@ function roomMeta(value) {
   const floor = Number(digits.length === 3 ? digits[0] : digits.slice(0, -2));
   const roomInFloor = Number(digits.slice(-2));
   if (floor < 1 || floor > FLOOR_COUNT || roomInFloor < 1 || roomInFloor > ROOMS_PER_FLOOR) return null;
-  const pod = roomInFloor <= 8 ? 1 : roomInFloor <= 16 ? 2 : roomInFloor <= 22 ? 3 : 4;
+  const pod = POD_OF_ROOM[roomInFloor - 1];
   return { id: `${floor}${String(roomInFloor).padStart(2, "0")}`, floor, roomInFloor, pod };
+}
+function podRange(pod) {
+  const first = POD_SIZES.slice(0, pod - 1).reduce((sum, size) => sum + size, 1);
+  const pad = value => String(value).padStart(2, "0");
+  return `${pad(first)}–${pad(first + POD_SIZES[pod - 1] - 1)}`;
 }
 function normaliseRoom(value) {
   return roomMeta(value)?.id || "";
@@ -208,6 +252,70 @@ function closeAllModals() {
 
 /* ── Listing form ───────────────────────────────────────────────────────── */
 
+/* ── Custom dropdown ──────────────────────────────────────────────────────
+   The native <select> stays in the DOM and remains the source of truth for
+   form reads/writes; this only draws a button + menu over it, matching the
+   hostel picker in the toolbar. Call syncSelect() after changing options or
+   the value programmatically. */
+function enhanceSelect(select) {
+  if (select.dataset.enhanced) return syncSelect(select);
+  select.dataset.enhanced = "true";
+
+  const wrap = document.createElement("div");
+  wrap.className = "select";
+  select.parentNode.insertBefore(wrap, select);
+  wrap.appendChild(select);
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "select-btn";
+  button.innerHTML = "<span></span><b>⌄</b>";
+  const label = select.getAttribute("aria-label");
+  if (label) button.setAttribute("aria-label", label);
+  button.setAttribute("aria-haspopup", "listbox");
+  button.setAttribute("aria-expanded", "false");
+
+  const menu = document.createElement("div");
+  menu.className = "select-menu hidden";
+  menu.setAttribute("role", "listbox");
+
+  wrap.append(button, menu);
+
+  button.addEventListener("click", () => {
+    const opening = menu.classList.contains("hidden");
+    closeAllSelects();
+    menu.classList.toggle("hidden", !opening);
+    wrap.classList.toggle("open", opening);
+    button.setAttribute("aria-expanded", String(opening));
+  });
+  menu.addEventListener("click", event => {
+    const option = event.target.closest(".select-option");
+    if (!option) return;
+    select.value = option.dataset.value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    closeAllSelects();
+    syncSelect(select);
+  });
+  syncSelect(select);
+}
+function syncSelect(select) {
+  const wrap = select.closest(".select");
+  if (!wrap) return;
+  const chosen = select.options[select.selectedIndex];
+  const button = wrap.querySelector(".select-btn");
+  button.querySelector("span").textContent = chosen ? chosen.textContent : "";
+  button.classList.toggle("is-placeholder", !select.value);
+  wrap.querySelector(".select-menu").innerHTML = [...select.options].map(option =>
+    `<button type="button" class="select-option ${option.value === select.value ? "selected" : ""}" role="option" aria-selected="${option.value === select.value}" data-value="${escapeHtml(option.value)}">${escapeHtml(option.textContent)}</button>`).join("");
+}
+function closeAllSelects() {
+  document.querySelectorAll(".select.open").forEach(wrap => {
+    wrap.classList.remove("open");
+    wrap.querySelector(".select-menu").classList.add("hidden");
+    wrap.querySelector(".select-btn").setAttribute("aria-expanded", "false");
+  });
+}
+
 function fillHostelSelect(select, includeBlank = false) {
   const selected = select.value;
   select.innerHTML = `${includeBlank ? '<option value="">Choose a hostel</option>' : ""}${db.hostels
@@ -216,10 +324,14 @@ function fillHostelSelect(select, includeBlank = false) {
 }
 function fillPodSelect(select) {
   const selected = select.value;
-  select.innerHTML = `<option value="">Any pod</option><option value="1">Pod 1 · rooms 01–08</option><option value="2">Pod 2 · rooms 09–16</option><option value="3">Pod 3 · rooms 17–22</option><option value="4">Pod 4 · rooms 23–30</option>`;
+  select.innerHTML = `<option value="">Any pod</option>${[1, 2, 3, 4]
+    .map(pod => `<option value="${pod}">Pod ${pod} · rooms ${podRange(pod)}</option>`).join("")}`;
   if ([...select.options].some(option => option.value === selected)) select.value = selected;
 }
 function renderProfile() {
+  /* One button, one meaning: it creates the listing, then maintains it. */
+  document.getElementById("hero-create-listing").innerHTML =
+    `${state.profile ? "Update my swap listing" : "Create my swap listing"} <b>→</b>`;
   updateSummary();
 }
 function setMoveDetails(visible) {
@@ -250,7 +362,11 @@ function openProfile() {
     });
   }
   setMoveDetails(form.elements.willingToMove.value === "yes");
+  form.querySelectorAll("select").forEach(enhanceSelect);
   document.getElementById("profile-modal-title").textContent = state.profile ? "Update your listing" : "Create your listing";
+  /* Only offer removal once something is actually stored — this is also the
+     escape hatch when a pre-filled room number looks like a mystery default. */
+  document.getElementById("delete-listing").classList.toggle("hidden", !state.profile);
   setModal("profile-modal", true);
 }
 
@@ -259,47 +375,130 @@ function openProfile() {
 let activeView = "3d";
 let show3DAll = true;
 
-function renderFloorSelect() {
-  const select = document.getElementById("floor-select");
-  const options = [];
-  if (activeView === "3d") options.push(`<option value="all">All floors</option>`);
-  for (let floor = FLOOR_COUNT; floor >= 1; floor--) options.push(`<option value="${floor}">Floor ${floor}</option>`);
-  select.innerHTML = options.join("");
-  select.value = activeView === "3d" && show3DAll ? "all" : String(activeFloor);
+/* Floors are a rail on the left of the stage. "All" only means something in
+   the 3D view — the floor plan always draws exactly one floor — so that button
+   is hidden while the plan is open. */
+function renderFloorRail() {
+  const holder = document.getElementById("floor-buttons");
+  const allButton = document.getElementById("floor-all");
+  const showingAll = activeView === "3d" && show3DAll;
+  holder.innerHTML = "";
+  for (let floor = FLOOR_COUNT; floor >= 1; floor--) {
+    const button = document.createElement("button");
+    button.textContent = String(floor).padStart(2, "0");
+    button.dataset.floor = floor;
+    button.setAttribute("aria-pressed", String(!showingAll && floor === activeFloor));
+    if (!showingAll && floor === activeFloor) button.classList.add("active");
+    button.addEventListener("click", () => applyFloorSelection(String(floor)));
+    holder.appendChild(button);
+  }
+  allButton.classList.toggle("hidden", activeView !== "3d");
+  allButton.classList.toggle("active", showingAll);
+  allButton.setAttribute("aria-pressed", String(showingAll));
 }
 function applyFloorSelection(value) {
   if (value === "all") {
     show3DAll = true;
     if (activeView === "3d") window.nivasViewer?.setFloor("all");
-    return;
+    return renderFloorRail();
   }
   show3DAll = false;
   activeFloor = Number(value);
   if (activeView === "3d") window.nivasViewer?.setFloor(String(activeFloor - 1));
   else { renderRooms(); resetPanel(); }
+  renderFloorRail();
 }
 function renderRooms() {
   const layer = document.getElementById("room-layer");
   const shapes = activeRoomShapes();
   layer.innerHTML = "";
+  const svgNS = "http://www.w3.org/2000/svg";
+
+  /* Pod 3's two missing cells: drawn struck through and inert so a student can
+     see the cell is not an option. No number, no status, never counted. */
+  voidShapes.forEach(path => {
+    const cell = document.createElementNS(svgNS, "path");
+    cell.setAttribute("d", path);
+    cell.setAttribute("class", "room void");
+    layer.appendChild(cell);
+    const numbers = path.match(/-?\d+(?:\.\d+)?/g).map(Number);
+    const xs = numbers.filter((_, i) => i % 2 === 0);
+    const ys = numbers.filter((_, i) => i % 2 === 1);
+    const [x1, x2, y1, y2] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    const inset = 10;
+    [[x1 + inset, y1 + inset, x2 - inset, y2 - inset], [x2 - inset, y1 + inset, x1 + inset, y2 - inset]]
+      .forEach(([ax, ay, bx, by]) => {
+        const line = document.createElementNS(svgNS, "line");
+        line.setAttribute("x1", ax); line.setAttribute("y1", ay);
+        line.setAttribute("x2", bx); line.setAttribute("y2", by);
+        line.setAttribute("class", "room-cross");
+        layer.appendChild(line);
+      });
+  });
+
   shapes.forEach((path, index) => {
     const id = roomId(index);
     const status = statusAt(id);
-    const room = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const room = document.createElementNS(svgNS, "path");
     room.setAttribute("d", path);
     room.setAttribute("class", `room ${status}`);
     room.dataset.id = id;
+    layer.appendChild(room);
     room.addEventListener("mouseenter", () => showToast(`Room ${id} · ${STATUS_LABELS[status]}`));
     room.addEventListener("click", () => openRoom(id, room));
-    layer.appendChild(room);
   });
   updateSummary();
 }
-function resetPanel() {
-  document.querySelector(".panel-empty").classList.remove("hidden");
-  document.getElementById("panel-detail").classList.add("hidden");
-  document.querySelectorAll(".selected-room").forEach(room => room.classList.remove("selected-room"));
+/* With no room selected the column shows the student's own listing and their
+   ranked choices, so it is never blank once they've registered. */
+function preferenceList(preferences) {
+  if (!preferences.length) return "";
+  return `<ol class="choice-list">${preferences.map(preference =>
+    `<li><span>${escapeHtml(preference.hostel)}</span><small>${preference.pod ? `Pod ${preference.pod}` : "Any pod"}</small></li>`).join("")}</ol>`;
 }
+/* The column is a stack of cards, not one long tinted strip: an identity card
+   carrying the status colour, then the ranked choices as their own card. */
+function statCells(room, meta) {
+  return `<div class="detail-stats">
+      <div><span>Room</span><strong>${escapeHtml(room)}</strong></div>
+      <div><span>Floor</span><strong>${String(meta.floor).padStart(2, "0")}</strong></div>
+      <div><span>Pod</span><strong>${meta.pod}</strong></div>
+    </div>`;
+}
+function choiceCard(title, preferences) {
+  return `<section class="detail-card">
+      <p class="choice-title">${title}</p>
+      ${preferences.length ? preferenceList(preferences) : '<p class="choice-none">No destinations chosen yet.</p>'}
+    </section>`;
+}
+
+function resetPanel() {
+  document.querySelectorAll(".selected-room").forEach(room => room.classList.remove("selected-room"));
+  const own = state.profile;
+  const empty = document.querySelector(".panel-empty");
+  const detail = document.getElementById("panel-detail");
+  if (!own) {
+    empty.classList.remove("hidden");
+    detail.classList.add("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+  detail.classList.remove("hidden");
+  const status = own.willingToMove ? "open" : "occupied";
+  detail.innerHTML = `
+    <section class="detail-card detail-card--${status}">
+      <div class="detail-head">
+        <div><p>YOUR LISTING</p><h3>${escapeHtml(own.hostel)} · ${escapeHtml(own.room)}</h3></div>
+        <span class="pill pill--${status}">${STATUS_LABELS[status]}</span>
+      </div>
+      ${statCells(own.room, roomMeta(own.room))}
+    </section>
+    ${own.willingToMove ? choiceCard("Your top choices", own.preferences) : ""}
+    <button class="btn btn--secondary btn--block panel-edit" type="button">Edit my listing</button>
+    <p class="panel-hint">Click any room to see what its resident posted.</p>`;
+  detail.querySelector(".panel-edit").addEventListener("click", openProfile);
+}
+
 function openRoom(id, element) {
   document.querySelectorAll(".selected-room").forEach(room => room.classList.remove("selected-room"));
   element?.classList.add("selected-room");
@@ -309,21 +508,21 @@ function openRoom(id, element) {
   const listing = listingAt(currentBuilding(), id);
   const meta = roomMeta(id);
   const isOwnRoom = Boolean(state.profile && state.profile.hostel === currentBuilding() && state.profile.room === id);
-  const preferenceText = listing?.willingToMove
-    ? listing.preferences.map(preference => `${preference.hostel}${preference.pod ? ` · Pod ${preference.pod}` : ""}`).join(" · ")
-    : "Not looking to move";
   detail.classList.remove("hidden");
   detail.innerHTML = `
-    <div class="detail-top"><div><p>ROOM ${escapeHtml(id)}</p><h3>${escapeHtml(currentBuilding())}</h3></div><button class="icon-btn close-panel" aria-label="Close room details">×</button></div>
-    <span class="pill pill--${status}">${STATUS_LABELS[status]}</span>
-    <div class="resident-card"><div class="avatar avatar--lg avatar--private">${isOwnRoom ? initials(state.profile.name) : "••"}</div><div><strong>${isOwnRoom ? "Your listing" : listing ? "Student listing" : "No listing for this room"}</strong><small>${listing ? (listing.willingToMove ? "This student is open to a swap." : "Registered, not seeking a move.") : "Nivas has no published information for this room."}</small></div></div>
-    <div class="detail-list">
-      <div><span>Floor</span><strong>Level ${String(meta.floor).padStart(2, "0")}</strong></div>
-      <div><span>Pod</span><strong>Pod ${meta.pod} · rooms ${meta.pod === 1 ? "01–08" : meta.pod === 2 ? "09–16" : meta.pod === 3 ? "17–22" : "23–30"}</strong></div>
-      ${listing?.willingToMove ? `<div><span>Looking for</span><strong>${escapeHtml(preferenceText)}</strong></div>` : ""}
-    </div>
-    ${listing && !isOwnRoom && listing.willingToMove ? '<button class="btn btn--secondary btn--block" disabled>Contact requests arrive in Phase 3</button>' : ""}`;
+    <section class="detail-card detail-card--${status}">
+      <div class="detail-head">
+        <div><p>${isOwnRoom ? "YOUR LISTING" : "ROOM DETAIL"}</p><h3>${escapeHtml(currentBuilding())} · ${escapeHtml(id)}</h3></div>
+        <span class="pill pill--${status}">${STATUS_LABELS[status]}</span>
+        <button class="icon-btn close-panel" aria-label="Close room details">×</button>
+      </div>
+      ${statCells(id, meta)}
+      <div class="resident-card"><div class="avatar avatar--lg avatar--private">${isOwnRoom ? initials(state.profile.name) : "••"}</div><div><strong>${isOwnRoom ? "Your listing" : listing ? "Student listing" : "No listing for this room"}</strong><small>${listing ? (listing.willingToMove ? "This student is open to a swap." : "Registered, not seeking a move.") : "Nivas has no published information for this room."}</small></div></div>
+    </section>
+    ${listing?.willingToMove ? choiceCard(isOwnRoom ? "Your top choices" : "Wants to move to", listing.preferences) : ""}
+    ${isOwnRoom ? '<button class="btn btn--secondary btn--block panel-edit" type="button">Edit my listing</button>' : ""}`;
   detail.querySelector(".close-panel").addEventListener("click", resetPanel);
+  detail.querySelector(".panel-edit")?.addEventListener("click", openProfile);
 }
 
 function roomStatusMapFor(hostel) {
@@ -341,22 +540,6 @@ function updateSummary() {
   document.getElementById("rooms-count").textContent = here.length;
   document.getElementById("open-swap-count").textContent = openHere.length;
   document.getElementById("match-count").textContent = matches.length;
-  updateInsights();
-}
-function topDestination(hostel) {
-  const counts = {};
-  activeListings().filter(listing => listing.hostel === hostel && listing.willingToMove)
-    .forEach(listing => listing.preferences.forEach(preference => { counts[preference.hostel] = (counts[preference.hostel] || 0) + 1; }));
-  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  return top ? { hostel: top[0], count: top[1] } : null;
-}
-function updateInsights() {
-  const hostel = currentBuilding();
-  const seekingHere = activeListings().filter(listing => listing.preferences.some(preference => preference.hostel === hostel));
-  document.getElementById("insight-want-value").textContent = `${hostel} ${seekingHere.length}`;
-  const top = topDestination(hostel);
-  document.getElementById("insight-wanted-label").textContent = `${hostel} residents want`;
-  document.getElementById("insight-wanted-value").textContent = top ? `${top.hostel} ${top.count}` : "No data yet";
 }
 
 function openActivity(hostel = currentBuilding(), ownHostel = ownListing()?.hostel) {
@@ -379,6 +562,7 @@ function setBuilding(index) {
   buildingIndex = (index + db.hostels.length) % db.hostels.length;
   const name = currentBuilding();
   document.getElementById("building-name").textContent = name;
+  document.getElementById("head-hostel").textContent = name;
   document.getElementById("site-card-building").textContent = name;
   document.getElementById("three-building-label").textContent = `${name.toUpperCase()} · ${BUILDING_PROFILE.architecture}`;
   document.getElementById("three-building-meta").textContent = BUILDING_PROFILE.meta;
@@ -408,21 +592,85 @@ function selectView(view) {
   document.getElementById("map-view").classList.toggle("hidden", view !== "map");
   document.getElementById("visual-stage").classList.toggle("hidden", view === "3d");
   document.querySelector(".hero-model").classList.toggle("hidden", view !== "3d");
-  renderFloorSelect();
+  renderFloorRail();
   if (view === "floor") { renderRooms(); resetPanel(); }
   if (view === "3d") requestAnimationFrame(() => window.nivasViewer?.resize());
+}
+
+/* ── Feedback ────────────────────────────────────────────────────────────── */
+
+function openFeedback() {
+  const form = document.getElementById("feedback-form");
+  form.reset();
+  const hostelSelect = form.elements.hostel;
+  fillHostelSelect(hostelSelect, true);
+  hostelSelect.value = state.profile?.hostel || "";
+  if (state.profile) {
+    form.elements.name.value = state.profile.name;
+    form.elements.email.value = state.profile.email;
+  }
+  form.querySelectorAll("select").forEach(enhanceSelect);
+  document.getElementById("feedback-note").textContent = FEEDBACK_ENDPOINT
+    ? "Sent straight to the maintainer."
+    : "Opens your mail app with this filled in.";
+  setModal("feedback-modal", true);
+}
+
+async function sendFeedback(report) {
+  if (FEEDBACK_ENDPOINT) {
+    await fetch(FEEDBACK_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(report)
+    });
+    return "Thanks — your report has been sent.";
+  }
+  /* No backend yet: hand the whole thing to the student's mail client. */
+  const body = [
+    `Type: ${report.kind}`,
+    `Name: ${report.name}`,
+    `Email: ${report.email}`,
+    report.phone ? `Phone: ${report.phone}` : null,
+    report.hostel ? `Hostel: ${report.hostel}` : null,
+    "",
+    report.message
+  ].filter(Boolean).join("\n");
+  const subject = `[Nivas] ${report.kind} from ${report.name}`;
+  window.location.href = `mailto:${FEEDBACK_TO}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return "Your mail app should be opening — send it and it reaches us.";
 }
 
 /* ── Event wiring ───────────────────────────────────────────────────────── */
 
 function bindEvents() {
   document.getElementById("hero-create-listing").addEventListener("click", openProfile);
+  document.getElementById("open-feedback").addEventListener("click", openFeedback);
+  document.getElementById("feedback-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const report = {
+      kind: form.elements.kind.value,
+      name: form.elements.name.value.trim(),
+      email: form.elements.email.value.trim(),
+      phone: form.elements.phone.value.trim(),
+      hostel: form.elements.hostel.value,
+      message: form.elements.message.value.trim(),
+      page: location.href
+    };
+    if (!report.name || !report.email || !report.message) return showToast("Add your name, email and a message.");
+    try {
+      const note = await sendFeedback(report);
+      closeAllModals();
+      showToast(note);
+    } catch (error) {
+      console.warn("Nivas could not send the report.", error);
+      showToast(`That didn't send — email ${FEEDBACK_TO} directly.`);
+    }
+  });
+  /* Picking a first choice used to pop the activity modal on top of this one,
+     which interrupted the form mid-answer. The same numbers are on the page. */
   document.getElementById("profile-form").addEventListener("change", event => {
     if (event.target.name === "willingToMove") setMoveDetails(event.target.value === "yes");
-    if (event.target.name === "preference1Hostel" && event.target.value) {
-      const form = event.currentTarget;
-      openActivity(event.target.value, form.elements.hostel.value);
-    }
   });
   document.getElementById("profile-form").addEventListener("submit", event => {
     event.preventDefault();
@@ -433,42 +681,33 @@ function bindEvents() {
       hostel: form.elements.hostel.value, room: form.elements.room.value, willingToMove, preferences
     });
     if (!profile) return showToast("Use a room number like 912 and complete every required field.");
-    state.profile = profile; persist(); closeAllModals(); renderProfile(); renderRooms(); updateViewer();
+    state.profile = profile; persist(); closeAllModals(); renderProfile(); renderRooms(); resetPanel(); updateViewer();
     showToast("Your room listing has been updated.");
+  });
+  document.getElementById("delete-listing").addEventListener("click", () => {
+    state.profile = null; persist(); closeAllModals(); renderProfile(); renderRooms(); resetPanel(); updateViewer();
+    showToast("Your listing has been removed from this device.");
   });
   document.querySelectorAll("[data-close-modal]").forEach(button => button.addEventListener("click", closeAllModals));
   document.getElementById("activity-close").addEventListener("click", () => setModal("activity-modal", false));
-  document.querySelectorAll("[data-tab]").forEach(button => button.addEventListener("click", () => {
-    document.querySelectorAll("[data-tab]").forEach(item => item.classList.toggle("active", item === button));
-    if (button.dataset.tab === "listing") openProfile(); else selectView("3d");
-  }));
-  document.getElementById("prev-building").addEventListener("click", () => setBuilding(buildingIndex - 1));
-  document.getElementById("next-building").addEventListener("click", () => setBuilding(buildingIndex + 1));
   document.getElementById("building-choice").addEventListener("click", () => {
     const menu = document.getElementById("building-menu"); const opening = menu.classList.contains("hidden");
     menu.classList.toggle("hidden", !opening); document.getElementById("building-choice").setAttribute("aria-expanded", String(opening));
   });
-  document.getElementById("insight-want").addEventListener("click", () => openActivity());
-  document.getElementById("insight-wanted").addEventListener("click", () => openActivity());
+  document.getElementById("swap-activity").addEventListener("click", () => openActivity());
   document.getElementById("enter-building").addEventListener("click", () => selectView("floor"));
   document.getElementById("facade-hotspot").addEventListener("click", () => selectView("floor"));
   document.getElementById("map-open-viewer").addEventListener("click", () => selectView("3d"));
   document.querySelectorAll("[data-view]").forEach(button => button.addEventListener("click", () => selectView(button.dataset.view)));
-  document.getElementById("floor-select").addEventListener("change", event => applyFloorSelection(event.target.value));
-  document.getElementById("zoom-in").addEventListener("click", () => {
-    if (activeView === "3d") window.nivasViewer?.zoomIn(); else document.getElementById("plan-wrap").classList.add("zoomed");
-  });
-  document.getElementById("zoom-out").addEventListener("click", () => {
-    if (activeView === "3d") window.nivasViewer?.zoomOut(); else document.getElementById("plan-wrap").classList.remove("zoomed");
-  });
-  document.getElementById("zoom-reset").addEventListener("click", () => {
-    if (activeView === "3d") window.nivasViewer?.resetView(); else document.getElementById("plan-wrap").classList.remove("zoomed");
-  });
+  document.getElementById("floor-all").addEventListener("click", () => applyFloorSelection("all"));
   document.addEventListener("click", event => {
     if (!document.querySelector(".building-picker").contains(event.target)) closeBuildingMenu();
+    if (!event.target.closest(".select")) closeAllSelects();
   });
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape") closeAllModals();
+    if (event.key !== "Escape") return;
+    if (document.querySelector(".select.open")) return closeAllSelects();
+    closeAllModals();
   });
   window.addEventListener("nivas:viewer-ready", updateViewer);
   window.addEventListener("nivas:room-click", event => { if (event.detail?.id) openRoom(event.detail.id); });

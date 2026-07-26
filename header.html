@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nivas — header options</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
+
+    <!-- Uses the real stylesheet so tokens, buttons, brand mark and type are
+         exactly what the app renders. Everything below is preview-only chrome
+         plus the three candidate headers. Dummy data, no behaviour. -->
+    <link rel="stylesheet" href="./styles.css?v=30" />
+
+    <style>
+      /* ── preview page chrome (not part of the app) ────────────────────── */
+      body { background: var(--canvas); }
+      .demo { max-width: 1320px; margin: 0 auto; padding: var(--s-8) var(--s-6) var(--s-12); }
+      .demo-title { font-size: var(--fs-2xl); font-weight: 800; color: var(--ink-900); }
+      .demo-lead { margin: var(--s-2) 0 var(--s-10); color: var(--ink-500); font-size: var(--fs-sm); max-width: 60ch; }
+      .variant { margin-bottom: var(--s-12); }
+      .variant-tag {
+        display: inline-flex; align-items: center; gap: var(--s-2);
+        margin-bottom: var(--s-3);
+        padding: var(--s-2) var(--s-3);
+        border-radius: var(--r-pill);
+        background: var(--ink-900); color: #fff;
+        font: 700 var(--fs-xs) var(--font-sans);
+      }
+      .variant-tag i { font-style: normal; opacity: .6; font-weight: 500; }
+      .variant-note { margin: 0 0 var(--s-5); color: var(--ink-500); font-size: var(--fs-xs); max-width: 70ch; line-height: var(--lh-base); }
+      .variant-note b { color: var(--ink-800); }
+      /* A stub of the explorer card, so each header is judged in proportion. */
+      .stage-stub {
+        margin-top: var(--s-5);
+        border: 1px solid var(--line); border-radius: var(--r-xl);
+        background: var(--surface); box-shadow: var(--e-2); overflow: hidden;
+      }
+      .stage-stub-bar {
+        height: 64px; display: flex; align-items: center; gap: var(--s-5);
+        padding: 0 var(--s-5);
+        border-bottom: 1px solid var(--line); background: var(--surface-sunk);
+        color: var(--ink-400); font-size: var(--fs-xs);
+      }
+      .stage-stub-body { height: 180px; display: grid; place-items: center; background: var(--scene); color: var(--on-scene-muted); font-size: var(--fs-xs); }
+
+      /* Shared by the previews: the headline row as it appears today. */
+      .demo-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-8); margin: var(--s-8) 0 var(--s-5); }
+      .demo-head h1 { font-size: var(--fs-3xl); font-weight: 800; line-height: 1.1; letter-spacing: -.02em; color: var(--ink-900); }
+      .demo-head h1 em { font-style: normal; color: var(--brand-600); }
+      .demo-head p { margin: var(--s-2) 0 0; color: var(--ink-500); font-size: var(--fs-sm); }
+      .demo-head strong { color: var(--ink-800); }
+
+      /* ══ OPTION A — counts pulled into the header ══════════════════════ */
+      .hdr-a {
+        display: flex; align-items: center; gap: var(--s-6);
+        min-height: 72px; padding: var(--s-3) var(--s-3) var(--s-3) var(--s-5);
+        border: 1px solid var(--line); border-radius: var(--r-pill);
+        background: var(--surface); box-shadow: var(--e-1);
+      }
+      .hdr-a .brand { flex: none; }
+      .hdr-a-divider { width: 1px; align-self: stretch; margin: var(--s-1) 0; background: var(--line); }
+      .hdr-a-context { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--s-6); }
+      .hdr-a-hostel { display: grid; gap: 2px; }
+      .hdr-a-hostel span { font: var(--fs-micro) var(--font-mono); letter-spacing: var(--track-mono); color: var(--ink-400); }
+      .hdr-a-hostel strong { font: 800 var(--fs-md) var(--font-sans); color: var(--ink-900); }
+      .hdr-a-counts { display: flex; align-items: center; gap: var(--s-5); margin-left: auto; }
+      .hdr-a-count { display: flex; align-items: baseline; gap: var(--s-2); white-space: nowrap; }
+      .hdr-a-count i { width: 8px; height: 8px; align-self: center; border-radius: var(--r-pill); background: var(--ink-400); }
+      .hdr-a-count.is-open i { background: var(--status-open); }
+      .hdr-a-count.is-match i { background: var(--status-match); }
+      .hdr-a-count strong { font: 800 var(--fs-xl) var(--font-sans); color: var(--ink-900); line-height: 1; }
+      .hdr-a-count small { color: var(--ink-500); font: 600 var(--fs-xs) var(--font-sans); }
+
+      /* ══ OPTION B — floating centred island ════════════════════════════ */
+      .hdr-b-wrap { display: flex; justify-content: center; }
+      .hdr-b {
+        display: inline-flex; align-items: center; gap: var(--s-4);
+        min-height: 56px; padding: var(--s-2) var(--s-2) var(--s-2) var(--s-5);
+        border: 1px solid var(--line); border-radius: var(--r-pill);
+        background: var(--surface); box-shadow: var(--e-2);
+      }
+      .hdr-b .brand { flex: none; }
+      .hdr-b-sep { width: 1px; height: 22px; background: var(--line); }
+      .hdr-b-hostel {
+        display: inline-flex; align-items: center; gap: var(--s-2);
+        padding: var(--s-2) var(--s-3); border-radius: var(--r-pill);
+        background: var(--surface-sunk);
+        font: 700 var(--fs-sm) var(--font-sans); color: var(--ink-900); cursor: pointer;
+      }
+      .hdr-b-hostel b { color: var(--ink-400); font-weight: 500; }
+
+      /* ══ OPTION C — branded gradient band ══════════════════════════════ */
+      .hdr-c {
+        position: relative; overflow: hidden;
+        display: flex; align-items: center; gap: var(--s-8);
+        min-height: 96px; padding: var(--s-5) var(--s-5) var(--s-5) var(--s-6);
+        border: 1px solid var(--line); border-radius: var(--r-xl);
+        background:
+          radial-gradient(120% 180% at 88% 0%, var(--brand-50), transparent 62%),
+          linear-gradient(90deg, #fff 0%, var(--accent-50) 100%);
+        box-shadow: var(--e-1);
+      }
+      .hdr-c:after {   /* faint louvre motif from the facade */
+        content: ''; position: absolute; inset: 0 0 0 auto; width: 320px;
+        background: repeating-linear-gradient(90deg, rgba(169,31,50,.10) 0 3px, transparent 3px 11px);
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000);
+        mask-image: linear-gradient(90deg, transparent, #000);
+        pointer-events: none;
+      }
+      .hdr-c-id { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--s-4); }
+      .hdr-c-id .brand { font-size: var(--fs-2xl); }
+      .hdr-c-tag { display: grid; gap: 3px; padding-left: var(--s-4); border-left: 1px solid var(--brand-100); }
+      .hdr-c-tag span { font: var(--fs-micro) var(--font-mono); letter-spacing: var(--track-mono); color: var(--brand-600); }
+      .hdr-c-tag small { color: var(--ink-500); font-size: var(--fs-xs); }
+      .hdr-c-live { position: relative; z-index: 1; margin-left: auto; display: flex; align-items: center; gap: var(--s-3); }
+      .hdr-c-pulse {
+        width: 9px; height: 9px; border-radius: var(--r-pill);
+        background: var(--status-open); box-shadow: 0 0 0 4px rgba(224,163,24,.22);
+        animation: pulse 1.8s var(--ease) infinite;
+      }
+      @keyframes pulse { 50% { box-shadow: 0 0 0 9px rgba(224,163,24,0); } }
+      .hdr-c-live-copy { display: grid; gap: 1px; }
+      .hdr-c-live-copy strong { font: 800 var(--fs-md) var(--font-sans); color: var(--ink-900); line-height: 1; }
+      .hdr-c-live-copy small { color: var(--ink-500); font-size: var(--fs-micro); }
+      .hdr-c .btn { position: relative; z-index: 1; }
+
+      .cta-pill { min-height: 44px; padding: 0 var(--s-5); border-radius: var(--r-pill); font-size: var(--fs-sm); box-shadow: var(--brand-action-shadow); white-space: nowrap; }
+    </style>
+  </head>
+
+  <body>
+    <div class="demo">
+      <h1 class="demo-title">Header options</h1>
+      <p class="demo-lead">
+        Three candidates, same dummy data, real tokens and components. Each one
+        is shown with whatever headline row it implies underneath, plus a stub
+        of the explorer card so you can judge the proportions honestly.
+      </p>
+
+      <!-- ════════════════════════════════════════════════════════════════ -->
+      <section class="variant">
+        <span class="variant-tag">Option A <i>· counts move up</i></span>
+        <p class="variant-note">
+          The empty middle fills with the hostel context and the three live
+          counts. <b>The row below loses its right-hand cluster</b>, so the page
+          stops opening with two identical left/right skeletons. Header ~72px.
+        </p>
+
+        <header class="hdr-a">
+          <a class="brand" href="#" aria-label="Nivas home">
+            <span class="brand-mark"><i></i><i></i><i></i></span>
+            <span>NIVAS<small>IIT HYDERABAD</small></span>
+          </a>
+          <div class="hdr-a-divider"></div>
+          <div class="hdr-a-context">
+            <div class="hdr-a-hostel"><span>VIEWING</span><strong>Bhabha · 9 floors</strong></div>
+            <div class="hdr-a-counts">
+              <div class="hdr-a-count"><i></i><strong>15</strong><small>listed</small></div>
+              <div class="hdr-a-count is-open"><i></i><strong>10</strong><small>open to swap</small></div>
+              <div class="hdr-a-count is-match"><i></i><strong>2</strong><small>matches</small></div>
+            </div>
+          </div>
+          <button class="btn btn--primary cta-pill">Create my swap listing <b>→</b></button>
+        </header>
+
+        <div class="demo-head">
+          <div>
+            <h1>Find the room swap that fits<em>.</em></h1>
+            <p>Browse student-posted listings in <strong>Bhabha</strong>, floor by floor.</p>
+          </div>
+        </div>
+
+        <div class="stage-stub">
+          <div class="stage-stub-bar">Bhabha ▾ · status key · 3D / Floor plan</div>
+          <div class="stage-stub-body">the artifact</div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════════ -->
+      <section class="variant">
+        <span class="variant-tag">Option B <i>· floating island</i></span>
+        <p class="variant-note">
+          The bar stops spanning the page: an auto-width pill, centred, holding
+          only brand, hostel and the action. <b>Nothing stretches, so nothing can
+          look empty.</b> The headline row keeps its counts. Header ~56px.
+        </p>
+
+        <div class="hdr-b-wrap">
+          <header class="hdr-b">
+            <a class="brand" href="#" aria-label="Nivas home">
+              <span class="brand-mark"><i></i><i></i><i></i></span>
+              <span>NIVAS<small>IIT HYDERABAD</small></span>
+            </a>
+            <div class="hdr-b-sep"></div>
+            <button class="hdr-b-hostel">Bhabha <b>⌄</b></button>
+            <button class="btn btn--primary cta-pill">Create my swap listing <b>→</b></button>
+          </header>
+        </div>
+
+        <div class="demo-head">
+          <div>
+            <h1>Find the room swap that fits<em>.</em></h1>
+            <p>Browse student-posted listings in <strong>Bhabha</strong>, floor by floor.</p>
+          </div>
+          <div class="head-stats">
+            <div class="head-stat"><strong>15</strong><small>listed</small></div>
+            <div class="head-stat head-stat--open"><strong>10</strong><small>open to swap</small></div>
+            <div class="head-stat head-stat--match"><strong>2</strong><small>matches for you</small></div>
+            <button class="btn btn--secondary head-activity">Swap activity <b>↗</b></button>
+          </div>
+        </div>
+
+        <div class="stage-stub">
+          <div class="stage-stub-bar">Bhabha ▾ · status key · 3D / Floor plan</div>
+          <div class="stage-stub-body">the artifact</div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════════ -->
+      <section class="variant">
+        <span class="variant-tag">Option C <i>· branded band</i></span>
+        <p class="variant-note">
+          Taller and warmer: a soft brand gradient with the facade's louvre
+          rhythm as a faint motif, the wordmark with a product descriptor, and a
+          live activity readout. <b>More presence, but it costs the artifact
+          ~36px of height.</b> Header ~96px.
+        </p>
+
+        <header class="hdr-c">
+          <div class="hdr-c-id">
+            <a class="brand" href="#" aria-label="Nivas home">
+              <span class="brand-mark"><i></i><i></i><i></i></span>
+              <span>NIVAS<small>IIT HYDERABAD</small></span>
+            </a>
+            <div class="hdr-c-tag">
+              <span>STUDENT ROOM SWAP</span>
+              <small>Posted by residents · not official allocation data</small>
+            </div>
+          </div>
+          <div class="hdr-c-live">
+            <span class="hdr-c-pulse"></span>
+            <div class="hdr-c-live-copy">
+              <strong>10 rooms open</strong>
+              <small>in Bhabha right now</small>
+            </div>
+          </div>
+          <button class="btn btn--primary cta-pill">Create my swap listing <b>→</b></button>
+        </header>
+
+        <div class="demo-head">
+          <div>
+            <h1>Find the room swap that fits<em>.</em></h1>
+            <p>Browse student-posted listings in <strong>Bhabha</strong>, floor by floor.</p>
+          </div>
+          <div class="head-stats">
+            <div class="head-stat"><strong>15</strong><small>listed</small></div>
+            <div class="head-stat head-stat--open"><strong>10</strong><small>open to swap</small></div>
+            <div class="head-stat head-stat--match"><strong>2</strong><small>matches for you</small></div>
+            <button class="btn btn--secondary head-activity">Swap activity <b>↗</b></button>
+          </div>
+        </div>
+
+        <div class="stage-stub">
+          <div class="stage-stub-bar">Bhabha ▾ · status key · 3D / Floor plan</div>
+          <div class="stage-stub-body">the artifact</div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
