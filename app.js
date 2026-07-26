@@ -72,7 +72,8 @@ const DataSource = {
       hostels: HOSTELS,
       podHostels: [],
       listings: DEMO_MODE ? DEMO_LISTINGS : [],
-      bookmarkCounts: {}
+      bookmarkCounts: {},
+      bookmarkWaitlist: {}
     };
     if (!API_BASE) return data;
     try {
@@ -116,7 +117,7 @@ function sanitiseListing(entry) {
   };
 }
 
-let db = { hostels: [], podHostels: [], listings: [], bookmarkCounts: {} };
+let db = { hostels: [], podHostels: [], listings: [], bookmarkCounts: {}, bookmarkWaitlist: {} };
 
 /* ── Room geometry ───────────────────────────────────────────────────────── */
 
@@ -187,14 +188,15 @@ function newToken() {
 }
 
 function loadState() {
-  const base = { profile: null, ownerToken: "", email: "", deviceToken: "", bookmarks: [], online: false };
+  const base = { profile: null, ownerToken: "", email: "", deviceToken: "", bookmarks: [], bookmarkName: "", online: false };
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-    base.profile     = saved.profile ? sanitiseLocalProfile(saved.profile) : null;
-    base.ownerToken  = typeof saved.ownerToken === "string" ? saved.ownerToken : "";
-    base.email       = typeof saved.email === "string" ? saved.email : "";
-    base.deviceToken = typeof saved.deviceToken === "string" ? saved.deviceToken : "";
-    base.bookmarks   = Array.isArray(saved.bookmarks) ? saved.bookmarks : [];
+    base.profile      = saved.profile ? sanitiseLocalProfile(saved.profile) : null;
+    base.ownerToken   = typeof saved.ownerToken === "string" ? saved.ownerToken : "";
+    base.email        = typeof saved.email === "string" ? saved.email : "";
+    base.deviceToken  = typeof saved.deviceToken === "string" ? saved.deviceToken : "";
+    base.bookmarks    = Array.isArray(saved.bookmarks) ? saved.bookmarks : [];
+    base.bookmarkName = typeof saved.bookmarkName === "string" ? saved.bookmarkName : "";
   } catch { /* Start fresh when storage is missing or malformed. */ }
   if (!base.deviceToken) base.deviceToken = newToken();
   return base;
@@ -226,7 +228,8 @@ function persist() {
     ownerToken: state.ownerToken,
     email: state.email,
     deviceToken: state.deviceToken,
-    bookmarks: state.bookmarks
+    bookmarks: state.bookmarks,
+    bookmarkName: state.bookmarkName
   }));
 }
 
@@ -239,9 +242,25 @@ function isBookmarked(hostel, room) {
 function bookmarkCount(hostel, room) {
   return db.bookmarkCounts?.[bookmarkKey(hostel, room)] || 0;
 }
+function waitlistFor(hostel, room) {
+  return db.bookmarkWaitlist?.[bookmarkKey(hostel, room)] || [];
+}
+/* The waitlist shows who's interested, so bookmarking needs a name attached.
+   A student who already has a listing has one; anyone else is asked once and
+   it's remembered for every bookmark after that. */
+function myBookmarkName() {
+  if (state.profile?.name) return state.profile.name;
+  if (state.bookmarkName) return state.bookmarkName;
+  const entered = window.prompt("Add your name so others can see who's on the waitlist for a room:");
+  const name = entered ? entered.trim().slice(0, 64) : "";
+  if (name) { state.bookmarkName = name; persist(); }
+  return name;
+}
 
 async function toggleBookmark(hostel, room) {
   const on = !isBookmarked(hostel, room);
+  const name = on ? myBookmarkName() : "";
+  if (on && !name) return; /* Declined to give a name — don't bookmark anonymously into a named waitlist. */
   /* Optimistic: the map updates now, the server catches up. */
   state.bookmarks = on
     ? [{ hostel, room }, ...state.bookmarks]
@@ -251,9 +270,10 @@ async function toggleBookmark(hostel, room) {
   renderRooms();
   showToast(on ? `Room ${room} bookmarked.` : `Removed room ${room} from bookmarks.`);
   try {
-    const result = await api("bookmarks.php", { deviceToken: state.deviceToken, hostel, room, on });
+    const result = await api("bookmarks.php", { deviceToken: state.deviceToken, hostel, room, on, name });
     state.bookmarks = result.bookmarks || state.bookmarks;
     db.bookmarkCounts = result.counts || db.bookmarkCounts;
+    db.bookmarkWaitlist = result.waitlist || db.bookmarkWaitlist;
     persist();
     renderRooms();
   } catch (error) {
@@ -266,6 +286,7 @@ async function syncBookmarks() {
     const result = await api("bookmarks.php", { deviceToken: state.deviceToken });
     state.bookmarks = result.bookmarks || [];
     db.bookmarkCounts = result.counts || db.bookmarkCounts;
+    db.bookmarkWaitlist = result.waitlist || db.bookmarkWaitlist;
     persist();
   } catch { /* Offline: the local list stands. */ }
 }
@@ -317,9 +338,14 @@ function listingMatchesYou(listing) {
 }
 function statusAtFor(hostel, room) {
   const listing = listingAt(hostel, room);
-  if (!listing) return "unlisted";
-  if (listingMatchesYou(listing)) return "match";
-  return listing.willingToMove ? "open" : "occupied";
+  if (listing) {
+    if (listingMatchesYou(listing)) return "match";
+    if (listing.willingToMove) return "open";
+  }
+  /* Waitlist is an overlay for rooms nobody has claimed yet, not a listing
+     state — a match or an open swap is always more actionable to show. */
+  if (bookmarkCount(hostel, room) >= 2) return "waitlist";
+  return listing ? "occupied" : "unlisted";
 }
 function statusAt(room) { return statusAtFor(currentBuilding(), room); }
 const BUILDING_PROFILE = {
@@ -333,7 +359,8 @@ const STATUS_LABELS = {
   unlisted: "Unlisted",
   occupied: "Registered",
   open: "Open to swap",
-  match: "Match for you"
+  match: "Match for you",
+  waitlist: "Waitlisted"
 };
 
 function showToast(message) {
@@ -434,7 +461,7 @@ function renderProfile() {
   renderBookmarkBadge();
   /* One button, one meaning: it creates the listing, then maintains it. */
   document.getElementById("hero-create-listing").innerHTML =
-    `${state.profile ? "Update my swap listing" : "Create my swap listing"} <b>→</b>`;
+    `${state.profile ? "Update my room listing" : "List my room"} <b>→</b>`;
   updateSummary();
 }
 function setMoveDetails(visible) {
@@ -629,6 +656,16 @@ function bookmarkButton(hostel, room) {
       <span>${on ? "★" : "☆"}</span>${on ? "Saved" : "Save"}${count ? `<b>${count}</b>` : ""}
     </button>`;
 }
+/* First come, first served: names are listed in the order they bookmarked. */
+function waitlistBlock(hostel, room) {
+  const names = waitlistFor(hostel, room);
+  if (names.length < 2) return "";
+  return `<section class="waitlist-card">
+      <p class="choice-title">Waitlist for this room</p>
+      <ol class="waitlist-list">${names.map(name => `<li><span>${escapeHtml(name)}</span></li>`).join("")}</ol>
+      <p class="waitlist-note">First come, first served — ${escapeHtml(names[0])} bookmarked it first.</p>
+    </section>`;
+}
 
 function openRoom(id, element) {
   document.querySelectorAll(".selected-room").forEach(room => room.classList.remove("selected-room"));
@@ -654,6 +691,7 @@ function openRoom(id, element) {
     </section>
     ${listing && !isOwnRoom ? contactBlock(listing) : ""}
     ${listing?.willingToMove ? choiceCard(isOwnRoom ? "Your top choices" : "Wants to move to", listing.preferences) : ""}
+    ${waitlistBlock(hostel, id)}
     ${isOwnRoom ? '<button class="btn btn--secondary btn--block panel-edit" type="button">Edit my listing</button>' : ""}`;
   detail.querySelector(".close-panel").addEventListener("click", resetPanel);
   detail.querySelector(".panel-edit")?.addEventListener("click", openProfile);

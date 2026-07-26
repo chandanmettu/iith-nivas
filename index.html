@@ -39,7 +39,7 @@
             <button class="btn btn--outline" id="open-feedback">Feature request</button>
             <!-- One entry point to the listing form. The old nav tab did exactly
                  the same thing as this button, so it's gone. -->
-            <button class="btn btn--primary topbar-cta" id="hero-create-listing">Create my swap listing <b>→</b></button>
+            <button class="btn btn--primary topbar-cta" id="hero-create-listing">List my room <b>→</b></button>
           </div>
         </header>
 
@@ -79,6 +79,7 @@
               <span class="key-item" tabindex="0"><i class="occupied"></i><b>Registered</b><small role="tooltip">Resident listed it, isn’t moving</small></span>
               <span class="key-item" tabindex="0"><i class="open"></i><b>Open to swap</b><small role="tooltip">Resident wants to move</small></span>
               <span class="key-item" tabindex="0"><i class="match"></i><b>Match for you</b><small role="tooltip">You each want the other’s room</small></span>
+              <span class="key-item" tabindex="0"><i class="waitlist"></i><b>Waitlisted</b><small role="tooltip">2+ students have bookmarked this room</small></span>
             </div>
 
             <div class="segmented view-switch" role="group" aria-label="Map view">
@@ -187,16 +188,16 @@
     <div class="modal-backdrop hidden" id="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
       <section class="modal-card">
         <button class="icon-btn modal-close" data-close-modal aria-label="Close">×</button>
-        <p class="modal-kicker">YOUR SWAP LISTING</p>
+        <p class="modal-kicker">YOUR ROOM LISTING</p>
         <h2 id="profile-modal-title">Create your listing</h2>
         <p class="modal-copy">Set your current room, then choose whether you’re open to a swap.</p>
         <!-- Two rows of details: name/email/phone, then hostel/room. Every
              <select> here is upgraded to the app's own dropdown by
              enhanceSelect() in app.js — no native select chrome. -->
         <form id="profile-form" class="form-grid">
-          <label class="span-2">Full name<input name="name" required maxlength="64" placeholder="Your full name" autocomplete="name" /></label>
-          <label class="span-2">IIT-H email<input name="email" type="email" required maxlength="128" placeholder="you@iith.ac.in" autocomplete="email" /></label>
-          <label class="span-2">Phone number<input name="phone" type="tel" required maxlength="24" placeholder="Kept private, never shown" autocomplete="tel" /></label>
+          <label class="span-1">Full name<input name="name" required maxlength="64" placeholder="Your full name" autocomplete="name" /></label>
+          <label class="span-4">IIT-H email<input name="email" type="email" required maxlength="128" placeholder="you@iith.ac.in" autocomplete="email" /></label>
+          <label class="span-1">Phone <i class="field-optional">optional</i><input name="phone" type="tel" maxlength="24" placeholder="Only if you share contact" autocomplete="tel" /></label>
           <label class="span-3">Current hostel<select name="hostel" required></select></label>
           <label class="span-3">Current room<input name="room" required inputmode="numeric" maxlength="4" placeholder="Room number, e.g. 912" title="Use the room number only: 912 means ninth floor, room 12." /></label>
 

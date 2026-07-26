@@ -27,6 +27,11 @@ sun.position.set(11, 26, 17); sun.castShadow = true; sun.shadow.mapSize.set(1024
 const fill = new THREE.DirectionalLight('#e45334', 1.05); fill.position.set(-17, 8, -11); scene.add(fill);
 
 const FLOOR_COUNT = 9;
+// Mirrors app.js's POD_SIZES exactly — pod 3 is a 6-room pod, not 8, and the
+// visualRoomId numbers below must land on the same 1-30 range app.js hands
+// out, or every status lookup for pods 3 and 4 misses.
+const POD_ROOM_COUNT = [8, 8, 6, 8];
+const POD_START = [0, 8, 16, 22];
 const floorHeight = 2.05;
 const groundClearance = 1.55;
 const residentialHeight = floorHeight * FLOOR_COUNT;
@@ -53,7 +58,7 @@ const materials = {
 // Mirrors the student-submitted swap status tokens in styles.css. A dark
 // panel is unlisted: it does not imply a vacancy or an official allocation.
 // Traffic light: red = registered but not moving, yellow = open, green = match.
-const statusColors = { unlisted: '#514346', occupied: '#d6452f', open: '#e0a318', match: '#2f9161' };
+const statusColors = { unlisted: '#514346', occupied: '#d6452f', open: '#e0a318', match: '#2f9161', waitlist: '#d6437e' };
 
 function box(size, position, material, parent, cast = true) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
@@ -95,10 +100,22 @@ function createResidentialBuilding() {
     }
     box([3.98, .045, .09], [2.1, y - .47, z], materials.louvreDark, leaf, false);
     box([3.98, .035, .09], [2.1, y + .47, z], materials.louvreDark, leaf, false);
+    // wingIndex is index*4+wing: 0-3 is the real, interactive tower; 4-7 is the
+    // decorative twin (see docs/PROGRESS.md) and never receives a visualRoomId,
+    // so it always renders unlisted regardless of real listings.
+    const isRealWing = wingIndex < 4;
+    const pod = wingIndex % 4;
+    const roomsInPod = POD_ROOM_COUNT[pod];
+    const podStart = POD_START[pod];
+    const sideStart = side > 0 ? 0 : 4;
     for (let room = 0; room < 4; room++) {
-      const roomSlot = wingIndex * 8 + (side < 0 ? 4 : 0) + room;
+      const slotInPod = sideStart + room;
+      if (slotInPod >= roomsInPod) continue;   // pod 3's two void cells — no mesh, matches the floor plan
+      const roomSlot = podStart + slotInPod;
       roomPanel(leaf, .48 + room * .92, y, z + side * .09, {
-        floor, wing: wingIndex, room: room + 1, visualRoomId: `${floor + 1}${String(roomSlot + 1).padStart(2, '0')}`, status: 'unlisted'
+        floor, wing: wingIndex, room: room + 1,
+        visualRoomId: isRealWing ? `${floor + 1}${String(roomSlot + 1).padStart(2, '0')}` : null,
+        status: 'unlisted'
       });
     }
   }
@@ -599,7 +616,7 @@ canvas.addEventListener('pointerdown', event => {
   }
   const hit = raycaster.intersectObjects(activeRoomMeshes.filter(mesh => mesh.visible), false)[0];
   if (!hit) return;
-  const info = hit.object.userData; const labels = { unlisted: 'Unlisted', occupied: 'Registered', open: 'Open to swap', match: 'Match for you' };
+  const info = hit.object.userData; const labels = { unlisted: 'Unlisted', occupied: 'Registered', open: 'Open to swap', match: 'Match for you', waitlist: 'Waitlisted' };
   readout.innerHTML = `<strong>${info.hostel} · Room ${String(info.floor + 1).padStart(2, '0')}-${info.room}</strong><span>${labels[info.status]} · click another room to explore</span>`;
   activeRoomMeshes.forEach(mesh => mesh.material.emissiveIntensity = mesh === hit.object ? .9 : .17);
   if (info.visualRoomId) window.dispatchEvent(new CustomEvent('nivas:room-click', { detail: { id: info.visualRoomId } }));

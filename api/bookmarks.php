@@ -1,11 +1,13 @@
 <?php
 /**
- * POST { deviceToken }                        -> this device's bookmarks
- * POST { deviceToken, hostel, room, on }      -> add / remove one
+ * POST { deviceToken }                              -> this device's bookmarks
+ * POST { deviceToken, hostel, room, on, name? }      -> add / remove one
  *
  * Bookmarks are keyed by an anonymous device token, not by an owner, so a
- * student can save rooms before verifying an email. Nothing personal is stored
- * against them, and the public counts are aggregate only.
+ * student can save rooms before verifying an email. The name is only
+ * collected because the waitlist feature shows it — first come, first
+ * served — to whoever else is looking at that same room; it is not required
+ * for a bookmark to work as a private save.
  */
 
 declare(strict_types=1);
@@ -28,8 +30,10 @@ if ($hostel !== '' && $room !== '') {
     nivas_throttle('bookmark', 120, 3600);
 
     if (!empty($body['on'])) {
-        $db->prepare('INSERT IGNORE INTO nivas_bookmarks (device_token, hostel, room) VALUES (?, ?, ?)')
-            ->execute([$deviceHash, $hostel, $room]);
+        $name = nivas_str($body, 'name', 64);
+        $db->prepare('INSERT INTO nivas_bookmarks (device_token, hostel, room, name) VALUES (?, ?, ?, ?)
+                      ON DUPLICATE KEY UPDATE name = VALUES(name)')
+            ->execute([$deviceHash, $hostel, $room, $name]);
     } else {
         $db->prepare('DELETE FROM nivas_bookmarks WHERE device_token = ? AND hostel = ? AND room = ?')
             ->execute([$deviceHash, $hostel, $room]);
@@ -39,13 +43,20 @@ if ($hostel !== '' && $room !== '') {
 $mine = $db->prepare('SELECT hostel, room FROM nivas_bookmarks WHERE device_token = ? ORDER BY created_at DESC');
 $mine->execute([$deviceHash]);
 
-$counts = [];
-foreach ($db->query('SELECT hostel, room, COUNT(*) AS total FROM nivas_bookmarks GROUP BY hostel, room')->fetchAll() as $row) {
-    $counts[$row['hostel'] . '-' . $row['room']] = (int) $row['total'];
+$counts   = [];
+$waitlist = [];
+$rows = $db->query(
+    'SELECT hostel, room, name FROM nivas_bookmarks ORDER BY created_at ASC'
+)->fetchAll();
+foreach ($rows as $row) {
+    $key = $row['hostel'] . '-' . $row['room'];
+    $counts[$key] = ($counts[$key] ?? 0) + 1;
+    $waitlist[$key][] = $row['name'] !== '' ? $row['name'] : 'A student';
 }
 
 nivas_send([
     'ok'        => true,
     'bookmarks' => $mine->fetchAll(),
     'counts'    => $counts,
+    'waitlist'  => $waitlist,
 ]);

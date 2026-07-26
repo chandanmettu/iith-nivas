@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS nivas_bookmarks (
   device_token CHAR(64)    NOT NULL,             -- sha256 of the client token
   hostel       VARCHAR(64) NOT NULL,
   room         VARCHAR(8)  NOT NULL,
+  name         VARCHAR(64) NOT NULL DEFAULT '',  -- shown on the room's waitlist, first come first served
   created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uniq_bookmark (device_token, hostel, room),

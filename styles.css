@@ -68,6 +68,10 @@
   --status-open-tint:      #fdf1d3;
   --status-match:          #2f9161;
   --status-match-tint:     #e0f1e7;
+  /* Pink: two or more students have bookmarked this room as a destination.
+     Overlay tier, not a listing state — see statusAtFor() in app.js. */
+  --status-waitlist:       #d6437e;
+  --status-waitlist-tint:  #fbe1ec;
 
   /* Radius — one scale, no ad-hoc values */
   --r-xs:   4px;
@@ -295,6 +299,7 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .pill--occupied { background: var(--status-occupied-tint); color: #2f6242; }
 .pill--open     { background: var(--status-open-tint);     color: #8a6011; }
 .pill--match    { background: var(--status-match-tint);    color: #246475; }
+.pill--waitlist { background: var(--status-waitlist-tint); color: #9c2d5f; }
 
 .avatar {
   display: grid;
@@ -317,8 +322,10 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--s-4);
 }
+.form-grid > .span-1 { grid-column: span 1; }
 .form-grid > .span-2 { grid-column: span 2; }
 .form-grid > .span-3 { grid-column: span 3; }
+.form-grid > .span-4 { grid-column: span 4; }
 .form-grid > label { display: grid; gap: var(--s-2); color: var(--ink-800); font: 700 var(--fs-xs) var(--font-sans); }
 .form-grid input {
   width: 100%;
@@ -869,6 +876,7 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .detail-card--occupied { background: var(--status-occupied-tint); border-color: var(--status-occupied); }
 .detail-card--match    { background: var(--status-match-tint);    border-color: var(--status-match); }
 .detail-card--unlisted { background: var(--status-unlisted-tint); border-color: var(--line); }
+.detail-card--waitlist { background: var(--status-waitlist-tint); border-color: var(--status-waitlist); }
 
 /* Title left, status pill hard right. */
 .detail-head { display: flex; align-items: flex-start; gap: var(--s-2); }
@@ -921,6 +929,7 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .key-item i.occupied { background: var(--status-occupied); }
 .key-item i.open     { background: var(--status-open); box-shadow: 0 0 6px var(--status-open); }
 .key-item i.match    { background: var(--status-match); box-shadow: 0 0 6px var(--status-match); }
+.key-item i.waitlist { background: var(--status-waitlist); box-shadow: 0 0 6px var(--status-waitlist); }
 
 .key-item small {
   position: absolute;
@@ -1202,6 +1211,7 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .room.occupied { fill: var(--status-occupied); }
 .room.open { fill: var(--status-open); }
 .room.match { fill: var(--status-match); }
+.room.waitlist { fill: var(--status-waitlist); }
 .room.selected-room { opacity: .9; stroke: var(--ink-900); stroke-width: 4; }
 
 /* A cell the drawing shows but the building doesn't have: solid dark, struck
@@ -1300,6 +1310,34 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 }
 .choice-list span { flex: 1; min-width: 0; color: var(--ink-900); font: 700 var(--fs-xs) var(--font-sans); }
 .choice-list small { color: var(--ink-500); font-size: var(--fs-micro); }
+
+/* Waitlist: who has bookmarked this room, first come first served. */
+.waitlist-card { padding: var(--s-4); border: 1px solid var(--status-waitlist); border-radius: var(--r-lg); background: var(--status-waitlist-tint); }
+.waitlist-list { display: grid; gap: var(--s-2); margin: var(--s-2) 0 0; padding: 0; list-style: none; counter-reset: waitlist; }
+.waitlist-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid rgba(214, 67, 126, .25);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+.waitlist-list li:before {
+  counter-increment: waitlist;
+  content: counter(waitlist);
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: var(--r-pill);
+  background: var(--status-waitlist);
+  color: #fff;
+  font: 700 var(--fs-micro) var(--font-mono);
+}
+.waitlist-list span { flex: 1; min-width: 0; color: var(--ink-900); font: 700 var(--fs-xs) var(--font-sans); }
+.waitlist-note { margin: 0; color: #9c2d5f; font: 600 var(--fs-micro) var(--font-sans); }
 .choice-none { margin: 0; color: var(--ink-400); font-size: var(--fs-micro); }
 .panel-edit { margin-top: var(--s-1); min-height: 46px; border-radius: var(--r-md); }
 .panel-hint { margin: var(--s-3) 0 0; color: var(--ink-400); font-size: var(--fs-micro); text-align: center; }
@@ -1631,8 +1669,10 @@ body { background: var(--canvas); }
      1fr here still rendered every field 2-up. Every span-N must be pinned to
      the single explicit column directly. */
   .form-grid { grid-template-columns: 1fr; }
+  .form-grid > .span-1,
   .form-grid > .span-2,
   .form-grid > .span-3,
+  .form-grid > .span-4,
   .form-grid > .span-6 { grid-column: 1 / -1; }
   /* Each destination-preference row (rank + hostel select + pod select) was
      squeezing a hostel name and a pod name into ~150px/~105px, truncating to
