@@ -17,7 +17,7 @@ const API_BASE = window.NIVAS_API_BASE ?? "./api";
    real address here; override with window.NIVAS_FEEDBACK_TO in your own
    deployed index.html if you want the offline mailto: fallback to work too. */
 const FEEDBACK_TO = window.NIVAS_FEEDBACK_TO ?? "feedback@example.com";
-const FLOOR_COUNT = 9;
+const FLOOR_COUNT = 10;
 const ROOMS_PER_FLOOR = 30;   /* pods of 8 / 8 / 6 / 8 — see roomShapes */
 /* Pods are 8 / 8 / 6 / 8, so room -> pod can't be arithmetic. */
 const POD_SIZES = [8, 8, 6, 8];
@@ -221,7 +221,13 @@ function sanitiseLocalProfile(profile) {
 }
 
 const state = loadState();
-let buildingIndex = HOSTELS.indexOf("Varahamihira");
+/* Track the selected hostel by NAME, not by index. This used to be an index
+   into the static HOSTELS constant while currentBuilding() read db.hostels —
+   a different, API-ordered array — so the app opened on whatever happened to
+   sit at that index (Bhabha, live) instead of the intended default. Names also
+   survive the dropdown being re-sorted by listing count. */
+const DEFAULT_HOSTEL = "Varahamihira";
+let buildingName = DEFAULT_HOSTEL;
 let activeFloor = FLOOR_COUNT;
 
 function persist() {
@@ -316,7 +322,10 @@ function podRange(pod) {
 function normaliseRoom(value) {
   return roomMeta(value)?.id || "";
 }
-function currentBuilding() { return db.hostels[buildingIndex]; }
+function currentBuilding() {
+  if (db.hostels.includes(buildingName)) return buildingName;
+  return db.hostels.includes(DEFAULT_HOSTEL) ? DEFAULT_HOSTEL : db.hostels[0];
+}
 function activeRoomShapes() { return roomShapes; }
 function roomId(index) { return `${activeFloor}${String(index + 1).padStart(2, "0")}`; }
 function initials(name) { return name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase(); }
@@ -763,9 +772,10 @@ function openActivity(hostel = currentBuilding(), ownHostel = ownListing()?.host
 
 /* ── Building selection, views ───────────────────────────────────────────── */
 
-function setBuilding(index) {
-  buildingIndex = (index + db.hostels.length) % db.hostels.length;
+function setBuilding(hostel) {
+  buildingName = hostel;
   const name = currentBuilding();
+  buildingName = name;
   document.getElementById("building-name").textContent = name;
   document.getElementById("head-hostel").textContent = name;
   document.getElementById("site-card-building").textContent = name;
@@ -774,21 +784,32 @@ function setBuilding(index) {
   document.getElementById("three-credit").textContent = BUILDING_PROFILE.credit;
   document.getElementById("facade-hotspot-name").textContent = name;
   document.querySelectorAll(".building-option").forEach(option => {
-    const selected = Number(option.dataset.buildingIndex) === buildingIndex;
+    const selected = option.dataset.building === name;
     option.classList.toggle("selected", selected); option.setAttribute("aria-selected", String(selected));
   });
   renderRooms(); resetPanel(); updateViewer();
 }
+let buildingMenuOrder = [];
 function renderBuildingMenu() {
   const menu = document.getElementById("building-menu");
   const listings = activeListings();
-  menu.innerHTML = db.hostels.map((name, index) => {
-    const count = listings.filter(listing => listing.hostel === name).length;
-    return `<button class="building-option ${index === buildingIndex ? "selected" : ""}" data-building-index="${index}" role="option" aria-selected="${index === buildingIndex}">
+  const countFor = hostel => listings.filter(listing => listing.hostel === hostel).length;
+  /* Busiest hostels first — that is where a swap is actually findable — with
+     ties alphabetical so there is a stable secondary order. updateSummary()
+     re-renders this every 20s, so the order is frozen while the menu is open:
+     re-sorting under an open dropdown moves the option the user is reaching for. */
+  if (menu.classList.contains("hidden") || buildingMenuOrder.length !== db.hostels.length) {
+    buildingMenuOrder = [...db.hostels].sort((a, b) => countFor(b) - countFor(a) || a.localeCompare(b));
+  }
+  const chosen = currentBuilding();
+  menu.innerHTML = buildingMenuOrder.map(name => {
+    const count = countFor(name);
+    const selected = name === chosen;
+    return `<button class="building-option ${selected ? "selected" : ""}" data-building="${escapeHtml(name)}" role="option" aria-selected="${selected}">
         <span>${escapeHtml(name)}</span>${count ? `<b class="building-option-count">${count}</b>` : ""}
       </button>`;
   }).join("");
-  menu.querySelectorAll(".building-option").forEach(option => option.addEventListener("click", () => { setBuilding(Number(option.dataset.buildingIndex)); closeBuildingMenu(); }));
+  menu.querySelectorAll(".building-option").forEach(option => option.addEventListener("click", () => { setBuilding(option.dataset.building); closeBuildingMenu(); }));
 }
 function closeBuildingMenu() {
   document.getElementById("building-menu").classList.add("hidden");
@@ -880,7 +901,7 @@ function openBookmarks() {
     }).join("")}</div>`;
     list.querySelectorAll(".bookmark-row").forEach(row => row.addEventListener("click", () => {
       closeAllModals();
-      setBuilding(db.hostels.indexOf(row.dataset.hostel));
+      setBuilding(row.dataset.hostel);
       activeFloor = roomMeta(row.dataset.room).floor;
       show3DAll = false;
       selectView("floor");
@@ -1088,7 +1109,7 @@ function bindEvents() {
 
 async function boot() {
   db = await DataSource.load();
-  bindEvents(); renderBuildingMenu(); renderProfile(); setBuilding(buildingIndex);
+  bindEvents(); renderBuildingMenu(); renderProfile(); setBuilding(buildingName);
   selectView("3d");
   if (API_BASE) {
     syncBookmarks().then(() => { renderBookmarkBadge(); renderRooms(); });

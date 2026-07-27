@@ -31,7 +31,7 @@ sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30; sun.shadow.camera.fa
 scene.add(sun);
 const fill = new THREE.DirectionalLight('#e45334', 1.05); fill.position.set(-24, 10, -16); scene.add(fill);
 
-const FLOOR_COUNT = 9;
+const FLOOR_COUNT = 10;
 /* One plan pixel is about 5 cm, one world unit about 2 m, so the block comes out
    ~75 m x 39 m — the real proportions, long and low, not the tower the old
    hand-placed massing implied. */
@@ -264,28 +264,18 @@ function createResidentialBuilding() {
     box([2.4, .95, 2.0], [planX(x), roofLevel + 1.05, planZ(y)], materials.soffit, group);
   });
 
-  /* Building identity: white lettering on the band of the two concave courts,
-     which is exactly where KALAM and BHABHA carry theirs. */
-  function nearestRing(x, y) {
-    let best = 0, bestDistance = Infinity;
-    ring.forEach((point, index) => {
-      const distance = (point.x - planX(x)) ** 2 + (point.y - planZ(y)) ** 2;
-      if (distance < bestDistance) { bestDistance = distance; best = index; }
-    });
-    return best;
-  }
-  const signs = [[700, 470], [1058, 552]].map(([x, y]) => {
-    const index = nearestRing(x, y);
-    const sign = new THREE.Mesh(
-      new THREE.PlaneGeometry(4.6, .58),
-      new THREE.MeshStandardMaterial({ transparent: true, metalness: .35, roughness: .4, side: THREE.DoubleSide })
-    );
-    sign.position.set(
-      ring[index].x + normals[index].x * .16, groundClearance + 6 * floorHeight + .16, ring[index].y + normals[index].y * .16);
-    sign.rotation.y = Math.atan2(normals[index].x, normals[index].y);
-    group.add(sign);
-    return sign;
-  });
+  /* Building identity. This was lettering on a facade band, like the real
+     hostels carry, but the longer names (Varahamihira, Kalpana Chawla) were
+     wider than the band and got cut off, and any fixed plane shows mirrored
+     from behind. A sprite above the roof turns to face the camera, so the name
+     is legible and complete from every orbit position and can never be cropped
+     or read backwards. makeNameTexture() fits the text to the canvas; the
+     scale below keeps that canvas's aspect so the lettering is never squashed. */
+  const nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
+  nameSprite.position.set(0, roofLevel + 2.15, 0);
+  nameSprite.scale.set(7.2, 1.41, 1);
+  group.add(nameSprite);
+  const signs = [nameSprite];
 
   /* ── Ground plane and landscape ─────────────────────────────────────────── */
 
@@ -432,16 +422,24 @@ function makeNameTexture(name) {
   canvas.width = 1024; canvas.height = 200;
   const ctx = canvas.getContext('2d');
   const text = name.toUpperCase();
-  ctx.font = '800 116px Manrope, Helvetica, Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.letterSpacing = '14px';
+  /* Fit the name to the canvas rather than letting it run off the edge. At the
+     old fixed 116px the longer hostel names measured wider than the 1024px
+     canvas and were simply cut in half. letterSpacing has to be set before
+     measuring — it counts towards measureText's width. */
+  let size = 116;
+  const useFont = () => {
+    ctx.font = `800 ${size}px Manrope, Helvetica, Arial, sans-serif`;
+    ctx.letterSpacing = `${Math.round(size * .12)}px`;
+  };
+  for (useFont(); size > 40 && ctx.measureText(text).width > 960; size -= 2) useFont();
 
   for (let depth = 7; depth > 0; depth--) {         // extruded side of the letters
     ctx.fillStyle = `rgba(28, 24, 26, ${.10 + depth * .045})`;
     ctx.fillText(text, 512 + depth * .7, 100 + depth * 1.1);
   }
-  const silver = ctx.createLinearGradient(0, 44, 0, 156);
+  const silver = ctx.createLinearGradient(0, 100 - size * .48, 0, 100 + size * .48);
   silver.addColorStop(0, '#ffffff');
   silver.addColorStop(.30, '#dfe4e9');
   silver.addColorStop(.50, '#f7f9fa');
