@@ -221,7 +221,7 @@ function sanitiseLocalProfile(profile) {
 }
 
 const state = loadState();
-let buildingIndex = HOSTELS.indexOf("Bhabha");
+let buildingIndex = HOSTELS.indexOf("Varahamihira");
 let activeFloor = FLOOR_COUNT;
 
 function persist() {
