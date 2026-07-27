@@ -1,5 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import { OrbitControls } from './vendor/OrbitControls.js';
+import { PLAN_ORIGIN, OUTLINE, ROOM_FACADE, VOID_FACADE } from './plan-geometry.js?v=2';
 
 const canvas = document.getElementById('hostel-3d-canvas');
 const readout = document.getElementById('three-readout');
@@ -11,41 +12,47 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#24181b');
-scene.fog = new THREE.Fog('#24181b', 30, 96);
-const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 220);
-camera.position.set(31, 27, 35);
+scene.fog = new THREE.Fog('#24181b', 52, 190);
+const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 400);
+const DEFAULT_CAMERA = { position: [29, 22, 39], target: [0, 7.6, 0] };
+camera.position.set(...DEFAULT_CAMERA.position);
 const controls = new OrbitControls(camera, canvas);
-controls.target.set(0, 10.5, 0);
+controls.target.set(...DEFAULT_CAMERA.target);
 controls.enableDamping = true;
-controls.minDistance = 14;
-controls.maxDistance = 48;
+controls.minDistance = 16;
+controls.maxDistance = 105;
 controls.maxPolarAngle = Math.PI * .48;
 
 scene.add(new THREE.HemisphereLight('#ffe5cf', '#332c2d', 2.2));
 const sun = new THREE.DirectionalLight('#ffe2bd', 3.1);
-sun.position.set(11, 26, 17); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); scene.add(sun);
-const fill = new THREE.DirectionalLight('#e45334', 1.05); fill.position.set(-17, 8, -11); scene.add(fill);
+sun.position.set(24, 42, 30); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -30; sun.shadow.camera.right = 30;
+sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30; sun.shadow.camera.far = 110;
+scene.add(sun);
+const fill = new THREE.DirectionalLight('#e45334', 1.05); fill.position.set(-24, 10, -16); scene.add(fill);
 
 const FLOOR_COUNT = 9;
-// Mirrors app.js's POD_SIZES exactly — pod 3 is a 6-room pod, not 8, and the
-// visualRoomId numbers below must land on the same 1-30 range app.js hands
-// out, or every status lookup for pods 3 and 4 misses.
-const POD_ROOM_COUNT = [8, 8, 6, 8];
-const POD_START = [0, 8, 16, 22];
-const floorHeight = 2.05;
-const groundClearance = 1.55;
+/* One plan pixel is about 5 cm, one world unit about 2 m, so the block comes out
+   ~75 m x 39 m — the real proportions, long and low, not the tower the old
+   hand-placed massing implied. */
+const PLAN_SCALE = .0254;
+const floorHeight = 1.6;         // ~3.2 m
+const groundClearance = 2.0;     // the tall open pilotis level in the photographs
+const bandHeight = .47;          // white parapet ribbon at each floor line
+const bandOut = .10;             // how far that ribbon oversails the wall
+const wallIn = .16;              // the red wall is set back behind the ribbon
+const louvreBase = .42;          // fins start where the ribbon stops
 const residentialHeight = floorHeight * FLOOR_COUNT;
+const roofLevel = groundClearance + residentialHeight;
+
 const materials = {
-  concrete: new THREE.MeshStandardMaterial({ color: '#ded6c9', roughness: .85, metalness: .01 }),
-  band: new THREE.MeshStandardMaterial({ color: '#fff8ee', roughness: .6 }),
-  louvre: new THREE.MeshStandardMaterial({ color: '#a94130', roughness: .7, metalness: .04 }),
-  louvreDark: new THREE.MeshStandardMaterial({ color: '#612d29', roughness: .7 }),
-  core: new THREE.MeshStandardMaterial({ color: '#cfc0b1', roughness: .86 }),
-  glass: new THREE.MeshStandardMaterial({ color: '#302826', emissive: '#3e261f', emissiveIntensity: .26, roughness: .25, metalness: .12, transparent: true, opacity: .86 }),
-  roof: new THREE.MeshStandardMaterial({ color: '#fff9ef', roughness: .58 }),
+  wall: new THREE.MeshStandardMaterial({ color: '#a8402c', roughness: .82, metalness: .01 }),
+  band: new THREE.MeshStandardMaterial({ color: '#f2ebdf', roughness: .66 }),
+  louvre: new THREE.MeshStandardMaterial({ color: '#d1573a', roughness: .7, metalness: .03 }),
+  soffit: new THREE.MeshStandardMaterial({ color: '#e9e1d4', roughness: .88 }),
   column: new THREE.MeshStandardMaterial({ color: '#eee5d9', roughness: .8 }),
+  reveal: new THREE.MeshStandardMaterial({ color: '#2a2320', roughness: .55, metalness: .1 }),
   paving: new THREE.MeshStandardMaterial({ color: '#cab9a9', roughness: .96 }),
-  pathway: new THREE.MeshStandardMaterial({ color: '#8f8981', roughness: .82 }),
   planter: new THREE.MeshStandardMaterial({ color: '#b7aa98', roughness: .92 }),
   soil: new THREE.MeshStandardMaterial({ color: '#5e4937', roughness: 1 }),
   foliage: new THREE.MeshStandardMaterial({ color: '#465d43', roughness: 1 }),
@@ -69,149 +76,222 @@ function railBar(parent, start, end, radius = .026) {
   const bar = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, vector.length(), 7), materials.bike);
   bar.position.copy(start).add(end).multiplyScalar(.5); bar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), vector.normalize()); parent.add(bar);
 }
+/* One BufferGeometry out of many boxes. A floor's louvre screen is ~600 fins;
+   as separate meshes that was the single biggest cost in the old viewer. */
+function mergeBoxes(items) {
+  const unit = new THREE.BoxGeometry(1, 1, 1);
+  const source = unit.attributes.position.array, sourceNormal = unit.attributes.normal.array, sourceIndex = unit.index.array;
+  const position = [], normal = [], index = [];
+  const matrix = new THREE.Matrix4(), normalMatrix = new THREE.Matrix3();
+  const quaternion = new THREE.Quaternion(), euler = new THREE.Euler(), vector = new THREE.Vector3();
+  items.forEach(item => {
+    const offset = position.length / 3;
+    matrix.compose(vector.fromArray(item.position), quaternion.setFromEuler(euler.set(0, item.angle || 0, 0)), new THREE.Vector3(...item.size));
+    normalMatrix.getNormalMatrix(matrix);
+    for (let i = 0; i < source.length; i += 3) {
+      vector.set(source[i], source[i + 1], source[i + 2]).applyMatrix4(matrix);
+      position.push(vector.x, vector.y, vector.z);
+      vector.set(sourceNormal[i], sourceNormal[i + 1], sourceNormal[i + 2]).applyMatrix3(normalMatrix).normalize();
+      normal.push(vector.x, vector.y, vector.z);
+    }
+    for (let i = 0; i < sourceIndex.length; i++) index.push(sourceIndex[i] + offset);
+  });
+  unit.dispose();
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normal, 3));
+  geometry.setIndex(index);
+  return geometry;
+}
 
-// Nivas lets a student compare up to three hostels side by side in the 3D
-// view (see docs/PROGRESS.md). The geometry is reference-informed, not
-// hostel-specific — every hostel uses the same leaf-cluster massing — so
-// each "slot" below is a full independent instance of that same building,
-// laid out along X and recoloured per that slot's assigned hostel.
+/* ── The perimeter, straight out of the floor plan ───────────────────────── */
+
+/* OUTLINE is the traced building perimeter in plan pixels (docs/trace-outline.py).
+   Everything below is positioned off it, so the 3D top view and the 2D floor
+   plan cannot drift apart: the four cross-shaped pods sit where the drawing puts
+   them, at the drawing's spacing, joined by the drawing's diagonal links. */
+const planX = value => (value - PLAN_ORIGIN[0]) * PLAN_SCALE;
+const planZ = value => (value - PLAN_ORIGIN[1]) * PLAN_SCALE;
+const ring = OUTLINE.map(([x, y]) => new THREE.Vector2(planX(x), planZ(y)));
+const RING = ring.length;
+
+function tangentAt(index) {
+  const before = ring[(index - 1 + RING) % RING], after = ring[(index + 1) % RING];
+  return new THREE.Vector2(after.x - before.x, after.y - before.y).normalize();
+}
+function insideRing(x, y) {
+  let inside = false;
+  for (let i = 0, j = RING - 1; i < RING; j = i++) {
+    const a = ring[i], b = ring[j];
+    if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
+// Resolve which side of the ring is outdoors once, rather than trusting the
+// winding the tracer happened to produce.
+const normalSign = (() => {
+  const probe = tangentAt(0);
+  return insideRing(ring[0].x + probe.y * .05, ring[0].y - probe.x * .05) ? -1 : 1;
+})();
+function normalAt(index) {
+  const tangent = tangentAt(index);
+  return new THREE.Vector2(tangent.y * normalSign, -tangent.x * normalSign);
+}
+const normals = ring.map((_, index) => normalAt(index));
+// rotation.y that points a mesh's local +X along the perimeter at this point.
+const headings = ring.map((_, index) => { const tangent = tangentAt(index); return Math.atan2(-tangent.y, tangent.x); });
+
+function offsetRing(distance) {
+  return ring.map((point, index) => new THREE.Vector2(point.x + normals[index].x * distance, point.y + normals[index].y * distance));
+}
+function shapeOf(points) {
+  const shape = new THREE.Shape();
+  points.forEach((point, index) => index ? shape.lineTo(point.x, -point.y) : shape.moveTo(point.x, -point.y));
+  shape.closePath();
+  return shape;
+}
+/* Extrudes a ring upward: the shape's y carries -z, so rotating -90° about X
+   lands the extrusion on +Y with the plan orientation intact. */
+function slabGeometry(points, height, holePoints) {
+  const shape = shapeOf(points);
+  if (holePoints) shape.holes.push(new THREE.Path(holePoints.slice().reverse().map(point => new THREE.Vector2(point.x, -point.y))));
+  return new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false }).rotateX(-Math.PI / 2);
+}
+function slab(geometry, y, material, parent, cast = true) {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.y = y; mesh.castShadow = cast; mesh.receiveShadow = true; parent.add(mesh);
+  return mesh;
+}
+
+/* Which stretches of the perimeter are room facade, and which are open balcony.
+   The plan's rooms only ever front onto the straight runs; every curve is the
+   louvred balcony that gives the block its banded, wavy elevation. */
+const facadeRuns = [...ROOM_FACADE, ...VOID_FACADE].filter(Boolean);
+const isBalcony = ring.map((_, index) => !facadeRuns.some(([from, to]) => index >= from && index <= to));
+
+// Centre / length / heading of one room's run of perimeter, for its status panel.
+function runFrame(from, to) {
+  const start = ring[from], end = ring[to];
+  const direction = new THREE.Vector2(end.x - start.x, end.y - start.y);
+  const length = direction.length() || .1;
+  direction.divideScalar(length);
+  const normal = new THREE.Vector2();
+  for (let i = from; i <= to; i++) normal.add(normals[i]);
+  normal.normalize();
+  return {
+    x: (start.x + end.x) / 2, z: (start.y + end.y) / 2,
+    nx: normal.x, nz: normal.y, length, angle: Math.atan2(-direction.y, direction.x),
+  };
+}
+const roomFrames = ROOM_FACADE.map(run => run && runFrame(run[0], run[1]));
+
 function createResidentialBuilding() {
   const group = new THREE.Group();
-  group.rotation.y = -.18;
   const floorGroups = Array.from({ length: FLOOR_COUNT }, () => new THREE.Group());
-  floorGroups.forEach(g => group.add(g));
+  floorGroups.forEach(floorGroup => group.add(floorGroup));
   const roomMeshes = [];
 
-  function roomPanel(parent, x, y, z, info) {
-    const material = new THREE.MeshStandardMaterial({ color: statusColors[info.status], emissive: statusColors[info.status], emissiveIntensity: .17, roughness: .45, metalness: .04 });
-    const panel = box([.5, .68, .09], [x, y, z], material, parent);
-    panel.userData = info; roomMeshes.push(panel);
-  }
-  function louvreWall(leaf, y, z, floor, wingIndex, side) {
-    box([3.88, .98, .07], [2.1, y, z], materials.glass, leaf, false);
-    // The real facade alternates tight privacy louvres, wider daylight gaps and solid red panels.
-    let x = .20;
-    for (let l = 0; l < 25; l++) {
-      const privacyPanel = (l + floor + wingIndex) % 11 === 0;
-      const width = privacyPanel ? .18 : .052;
-      const louvre = box([width, 1.08, privacyPanel ? .16 : .12], [x, y, z + (side > 0 ? .04 : -.04)], materials.louvre, leaf, false);
-      louvre.rotation.y = privacyPanel ? 0 : .31 * side;
-      x += width + (privacyPanel ? .13 : (l % 5 === 0 ? .105 : .075));
-    }
-    box([3.98, .045, .09], [2.1, y - .47, z], materials.louvreDark, leaf, false);
-    box([3.98, .035, .09], [2.1, y + .47, z], materials.louvreDark, leaf, false);
-    // wingIndex is index*4+wing: 0-3 is the real, interactive tower; 4-7 is the
-    // decorative twin (see docs/PROGRESS.md) and never receives a visualRoomId,
-    // so it always renders unlisted regardless of real listings.
-    const isRealWing = wingIndex < 4;
-    const pod = wingIndex % 4;
-    const roomsInPod = POD_ROOM_COUNT[pod];
-    const podStart = POD_START[pod];
-    const sideStart = side > 0 ? 0 : 4;
-    for (let room = 0; room < 4; room++) {
-      const slotInPod = sideStart + room;
-      if (slotInPod >= roomsInPod) continue;   // pod 3's two void cells — no mesh, matches the floor plan
-      const roomSlot = podStart + slotInPod;
-      roomPanel(leaf, .48 + room * .92, y, z + side * .09, {
-        floor, wing: wingIndex, room: room + 1,
-        visualRoomId: isRealWing ? `${floor + 1}${String(roomSlot + 1).padStart(2, '0')}` : null,
-        status: 'unlisted'
+  const wallRing = offsetRing(-wallIn);
+  const wallGeometry = slabGeometry(wallRing, floorHeight);
+  const bandGeometry = slabGeometry(offsetRing(bandOut), bandHeight);
+
+  /* The vertical fins. Real ones sit roughly 0.3 m apart, so sample the ring at
+     twice its stored resolution and skip anything a room fronts onto. */
+  const finHeight = floorHeight - louvreBase - .04;
+  const fins = [];
+  for (let index = 0; index < RING; index++) {
+    if (!isBalcony[index] || !isBalcony[(index + 1) % RING]) continue;
+    for (const step of [0, .5]) {
+      const next = (index + 1) % RING;
+      const x = ring[index].x + (ring[next].x - ring[index].x) * step;
+      const z = ring[index].y + (ring[next].y - ring[index].y) * step;
+      const normal = normals[index];
+      fins.push({
+        size: [.10, finHeight, .24],
+        position: [x + normal.x * (-wallIn + .12), louvreBase + finHeight / 2, z + normal.y * (-wallIn + .12)],
+        angle: headings[index],
       });
     }
   }
-  function waveFascia(leaf, y, side) {
-    // Small connected segments give the white floor band a soft, continuous wave at the curved facade.
-    for (let segment = 0; segment < 23; segment++) {
-      const x = .10 + segment * .18;
-      const offset = Math.sin((segment / 22) * Math.PI * 1.25) * .17;
-      box([.22, .20, .18], [x, y, side * (1.31 + offset)], materials.band, leaf, false);
-    }
-  }
-  function roundedLeafEnd(leaf, y) {
-    const end = new THREE.Mesh(new THREE.CylinderGeometry(1.18, 1.18, 1.65, 28), materials.concrete);
-    end.position.set(4.05, y, 0); end.castShadow = true; end.receiveShadow = true; leaf.add(end);
-    for (let l = 0; l < 15; l++) {
-      const angle = -1.18 + l * .168;
-      const x = 4.05 + Math.cos(angle) * 1.19;
-      const z = Math.sin(angle) * 1.19;
-      box([.065, 1.06, .065], [x, y, z], materials.louvre, leaf, false);
-    }
-  }
-  function wingForFloor(target, floor, offsetX, offsetZ, angle, wingIndex) {
-    const leaf = new THREE.Group(); leaf.position.set(offsetX, 0, offsetZ); leaf.rotation.y = angle; target.add(leaf);
-    const y0 = groundClearance + floor * floorHeight;
-    const y = y0 + 1.0;
-    // One radial “leaf”: a tapered room bar, rounded exterior, louvred skin and white concrete bands.
-    box([4.0, 1.65, 2.3], [2.0, y, 0], materials.concrete, leaf);
-    box([4.82, .19, 2.7], [2.1, y0 + .12, 0], materials.band, leaf);
-    box([4.82, .16, 2.7], [2.1, y0 + floorHeight - .08, 0], materials.band, leaf);
-    waveFascia(leaf, y0 + .14, 1); waveFascia(leaf, y0 + .14, -1);
-    waveFascia(leaf, y0 + floorHeight - .08, 1); waveFascia(leaf, y0 + floorHeight - .08, -1);
-    louvreWall(leaf, y, 1.18, floor, wingIndex, 1);
-    louvreWall(leaf, y, -1.18, floor, wingIndex, -1);
-    roundedLeafEnd(leaf, y);
-  }
-  function groundRoom(parent, x, z, rotation = 0) {
-    const room = new THREE.Group(); room.position.set(x, 0, z); room.rotation.y = rotation; parent.add(room);
-    // Enclosed white room at the pilotis level, based on the service/core rooms in the reference facade.
-    box([2.5, 1.33, 2.05], [0, .75, 0], materials.band, room);
-    box([2.72, .13, 2.28], [0, 1.46, 0], materials.band, room, false);
-    box([.64, .92, .06], [.34, .74, 1.055], materials.louvreDark, room, false);
-    for (let slat = 0; slat < 5; slat++) box([.07, 1.01, .1], [.08 + slat * .14, .76, 1.10], materials.louvre, room, false);
-    box([.54, .78, .06], [-.72, .77, 1.06], materials.glass, room, false);
-    box([.45, .10, .12], [-.72, 1.18, 1.1], materials.band, room, false);
-  }
-  function cluster(x, z, rotation, index) {
-    const coreGroup = new THREE.Group(); coreGroup.position.set(x, 0, z); coreGroup.rotation.y = rotation; group.add(coreGroup);
-    // The communal atrium is held by an expressed stair/lift core and roof lantern.
-    box([1.28, residentialHeight + groundClearance, 1.55], [0, (residentialHeight + groundClearance) / 2, 0], materials.core, coreGroup);
-    box([.5, residentialHeight - .5, .12], [.69, groundClearance + residentialHeight / 2, 0], materials.louvreDark, coreGroup, false);
-    for (let step = 0; step < 11; step++) box([.95, .10, .24], [-.15, .22 + step * .17, 1.12 - step * .16], materials.band, coreGroup, false);
-    for (let floor = 0; floor < FLOOR_COUNT; floor++) {
-      const target = floorGroups[floor];
-      const y = groundClearance + floor * floorHeight + .12;
-      box([5.45, .16, 5.45], [x, y, z], materials.band, target);
-      [0, Math.PI / 2, Math.PI, -Math.PI / 2].forEach((angle, wing) => wingForFloor(target, floor, x, z, rotation + angle, index * 4 + wing));
-    }
-    const towerY = groundClearance + residentialHeight + .7;
-    box([1.65, 1.25, 1.85], [0, towerY, 0], materials.core, coreGroup);
-    box([4.2, .15, 3.35], [0, towerY + .72, 0], materials.roof, coreGroup);
-    // Pilotis create the open shaded ground level visible in the reference facade.
-    [[-2.15,-2.15],[-2.15,2.15],[2.15,-2.15],[2.15,2.15]].forEach(([px,pz]) => {
-      const column = new THREE.Mesh(new THREE.CylinderGeometry(.14, .17, groundClearance, 10), materials.column);
-      column.position.set(px, groundClearance / 2, pz); column.castShadow = true; column.receiveShadow = true; coreGroup.add(column);
-    });
-    // Two small enclosed bases leave generous shaded passages on the other sides of the cluster.
-    groundRoom(coreGroup, 2.15, 0, 0);
-    groundRoom(coreGroup, 0, -2.15, -Math.PI / 2);
+  const finGeometry = mergeBoxes(fins);
+  // A dark reveal behind the fins so the balcony reads as depth, not a red stripe.
+  const revealGeometry = slabGeometry(offsetRing(-wallIn - .01), finHeight);
+
+  function roomPanel(parent, frame, y, info) {
+    const material = new THREE.MeshStandardMaterial({ color: statusColors[info.status], emissive: statusColors[info.status], emissiveIntensity: .17, roughness: .45, metalness: .04 });
+    const panel = box([frame.length + .1, .66, .14], [frame.x + frame.nx * (-wallIn + .07), y, frame.z + frame.nz * (-wallIn + .07)], material, parent);
+    panel.rotation.y = frame.angle;
+    panel.userData = info; roomMeshes.push(panel);
   }
 
-  // Two connected residential clusters are the basis of the typical IIT-H block.
-  cluster(-4.2, -1.5, .12, 0);
-  cluster(4.2, 1.5, -.12, 1);
   for (let floor = 0; floor < FLOOR_COUNT; floor++) {
-    const y = groundClearance + floor * floorHeight + .92;
-    box([5.5, .45, 1.34], [0, y, 0], materials.concrete, floorGroups[floor]);
-    box([5.85, .15, 1.65], [0, groundClearance + floor * floorHeight + .13, 0], materials.band, floorGroups[floor]);
+    const level = floorGroups[floor];
+    const y0 = groundClearance + floor * floorHeight;
+    slab(wallGeometry, y0, materials.wall, level);
+    slab(revealGeometry, y0 + louvreBase, materials.reveal, level, false);
+    slab(bandGeometry, y0 - .05, materials.band, level);
+    const finScreen = new THREE.Mesh(finGeometry, materials.louvre);
+    finScreen.position.y = y0; finScreen.castShadow = true; finScreen.receiveShadow = true; level.add(finScreen);
+    roomFrames.forEach((frame, roomIndex) => {
+      if (!frame) return;
+      roomPanel(level, frame, y0 + louvreBase + finHeight / 2, {
+        floor, room: roomIndex + 1,
+        pod: roomIndex < 8 ? 1 : roomIndex < 16 ? 2 : roomIndex < 22 ? 3 : 4,
+        visualRoomId: `${floor + 1}${String(roomIndex + 1).padStart(2, '0')}`,
+        status: 'unlisted',
+      });
+    });
   }
 
-  // Building identity: the hostel's name in brushed silver on the link block
-  // between the two clusters, readable from the front and from the back.
-  const signs = [1, -1].map(side => {
+  /* Open pilotis ground level: a set-back white volume behind a colonnade, the
+     way the entrance courts read in the photographs. */
+  slab(slabGeometry(offsetRing(.38), .2), 0, materials.paving, group, false);
+  slab(slabGeometry(offsetRing(-.55), groundClearance), .18, materials.soffit, group);
+  for (let index = 0; index < RING; index += 9) {
+    const column = new THREE.Mesh(new THREE.CylinderGeometry(.13, .15, groundClearance, 10), materials.column);
+    column.position.set(ring[index].x + normals[index].x * -.16, groundClearance / 2 + .18, ring[index].y + normals[index].y * -.16);
+    column.castShadow = true; column.receiveShadow = true; group.add(column);
+  }
+
+  // Roof: the last band, a deck, and a parapet ring that carries the fascia up.
+  // The deck is the duller soffit tone, so from above the building still reads
+  // as banded ribbon rather than one bright lid.
+  slab(bandGeometry, roofLevel - .05, materials.band, group);
+  slab(slabGeometry(wallRing, .18), roofLevel + .40, materials.soffit, group);
+  slab(slabGeometry(offsetRing(.02), .34, offsetRing(-.30)), roofLevel + .58, materials.band, group);
+  // Stair and lift heads land on the four pod centres, as they do on the plan.
+  [[346.5, 337.5], [702, 692.5], [1058, 337.5], [1414.5, 692.5]].forEach(([x, y]) => {
+    box([2.4, .95, 2.0], [planX(x), roofLevel + 1.05, planZ(y)], materials.soffit, group);
+  });
+
+  /* Building identity: white lettering on the band of the two concave courts,
+     which is exactly where KALAM and BHABHA carry theirs. */
+  function nearestRing(x, y) {
+    let best = 0, bestDistance = Infinity;
+    ring.forEach((point, index) => {
+      const distance = (point.x - planX(x)) ** 2 + (point.y - planZ(y)) ** 2;
+      if (distance < bestDistance) { bestDistance = distance; best = index; }
+    });
+    return best;
+  }
+  const signs = [[700, 470], [1058, 552]].map(([x, y]) => {
+    const index = nearestRing(x, y);
     const sign = new THREE.Mesh(
-      new THREE.PlaneGeometry(4.3, .82),
-      new THREE.MeshStandardMaterial({ transparent: true, metalness: .9, roughness: .28, envMapIntensity: 1.4 })
+      new THREE.PlaneGeometry(4.6, .58),
+      new THREE.MeshStandardMaterial({ transparent: true, metalness: .35, roughness: .4, side: THREE.DoubleSide })
     );
-    sign.position.set(0, groundClearance + 4 * floorHeight + .92, side * .72);
-    if (side < 0) sign.rotation.y = Math.PI;
+    sign.position.set(
+      ring[index].x + normals[index].x * .16, groundClearance + 6 * floorHeight + .16, ring[index].y + normals[index].y * .16);
+    sign.rotation.y = Math.atan2(normals[index].x, normals[index].y);
     group.add(sign);
     return sign;
   });
 
-  // The covered court extends beyond the residential footprint, leaving room for the approach and cycle bays.
-  box([21.8, .18, 15.6], [0, .09, 0], materials.paving, group, false);
-  const contactShadow = new THREE.Mesh(new THREE.CircleGeometry(7.4, 56), new THREE.MeshBasicMaterial({ color: '#352425', transparent: true, opacity: .28, depthWrite: false }));
-  contactShadow.rotation.x = -Math.PI / 2; contactShadow.position.y = .195; group.add(contactShadow);
+  /* ── Ground plane and landscape ─────────────────────────────────────────── */
+
+  box([46, .18, 28], [0, .09, 0], materials.paving, group, false);
+  const contactShadow = new THREE.Mesh(slabGeometry(offsetRing(1.7), .01), new THREE.MeshBasicMaterial({ color: '#352425', transparent: true, opacity: .3, depthWrite: false }));
+  contactShadow.position.y = .19; group.add(contactShadow);
 
   function bikeBar(target, start, end, radius = .035) {
     const vector = new THREE.Vector3().subVectors(end, start);
@@ -222,81 +302,48 @@ function createResidentialBuilding() {
   }
   function bicycle(x, z, angle = 0, baseY = .23) {
     const bike = new THREE.Group(); bike.position.set(x, baseY, z); bike.rotation.y = angle; group.add(bike);
-    const wheel = new THREE.TorusGeometry(.34, .028, 6, 15);
-    [-.42, .42].forEach(offset => {
-      const ring = new THREE.Mesh(wheel, materials.bike); ring.position.set(offset, .34, 0); bike.add(ring);
+    const wheel = new THREE.TorusGeometry(.28, .024, 6, 14);
+    [-.35, .35].forEach(offset => {
+      const wheelMesh = new THREE.Mesh(wheel, materials.bike); wheelMesh.position.set(offset, .28, 0); bike.add(wheelMesh);
     });
-    bikeBar(bike, new THREE.Vector3(-.42,.34,0), new THREE.Vector3(0,.78,0));
-    bikeBar(bike, new THREE.Vector3(0,.78,0), new THREE.Vector3(.42,.34,0));
-    bikeBar(bike, new THREE.Vector3(-.42,.34,0), new THREE.Vector3(.42,.34,0));
-    bikeBar(bike, new THREE.Vector3(0,.78,0), new THREE.Vector3(.12,1.03,0));
-    bikeBar(bike, new THREE.Vector3(-.15,.82,0), new THREE.Vector3(-.27,1.06,0));
-    bikeBar(bike, new THREE.Vector3(-.4,1.03,0), new THREE.Vector3(.02,1.03,0), .03);
+    bikeBar(bike, new THREE.Vector3(-.35, .28, 0), new THREE.Vector3(0, .64, 0), .03);
+    bikeBar(bike, new THREE.Vector3(0, .64, 0), new THREE.Vector3(.35, .28, 0), .03);
+    bikeBar(bike, new THREE.Vector3(-.35, .28, 0), new THREE.Vector3(.35, .28, 0), .03);
+    bikeBar(bike, new THREE.Vector3(0, .64, 0), new THREE.Vector3(.1, .85, 0), .03);
+    bikeBar(bike, new THREE.Vector3(-.33, .85, 0), new THREE.Vector3(.02, .85, 0), .026);
   }
   function planterSeat(x, z, rotation = 0) {
-    const planter = new THREE.Group(); planter.position.set(x, 0, z); planter.rotation.y = rotation; group.add(planter);
-    box([3.25, .42, 1.18], [0, .41, 0], materials.planter, planter, false);
-    box([2.82, .08, .76], [0, .66, 0], materials.soil, planter, false);
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.075, .10, 1.25, 7), new THREE.MeshStandardMaterial({ color: '#704b33', roughness: 1 }));
-    trunk.position.y = 1.25; planter.add(trunk);
-    [[0,2.0,0],[.34,1.7,.13],[-.37,1.62,-.1],[.12,1.52,-.32]].forEach(([px,py,pz], index) => {
-      const crown = new THREE.Mesh(new THREE.SphereGeometry(.43 - index * .04, 8, 7), materials.foliage);
-      crown.position.set(px, py, pz); planter.add(crown);
+    const planter = new THREE.Group(); planter.position.set(x, .18, z); planter.rotation.y = rotation; group.add(planter);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, .46, 20), materials.planter);
+    rim.position.y = .23; rim.castShadow = true; rim.receiveShadow = true; planter.add(rim);
+    const soil = new THREE.Mesh(new THREE.CylinderGeometry(.9, .9, .08, 18), materials.soil);
+    soil.position.y = .48; planter.add(soil);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.06, .09, 1.6, 7), new THREE.MeshStandardMaterial({ color: '#704b33', roughness: 1 }));
+    trunk.position.y = 1.3; planter.add(trunk);
+    [[0, 2.35, 0], [.32, 2.0, .12], [-.34, 1.9, -.1], [.11, 1.78, -.3]].forEach(([px, py, pz], index) => {
+      const crown = new THREE.Mesh(new THREE.SphereGeometry(.46 - index * .05, 8, 7), materials.foliage);
+      crown.position.set(px, py, pz); crown.castShadow = true; planter.add(crown);
     });
-    // Low concrete edges double as the informal sitting surface shown in the courtyard photos.
-    box([3.52, .13, .20], [0, .72, .60], materials.band, planter, false);
-    box([3.52, .13, .20], [0, .72, -.60], materials.band, planter, false);
   }
-  function bicycleCourt(x, z, direction = 1) {
-    box([3.75, .17, 1.92], [x, .28, z], materials.band, group, false);
-    railBar(group, new THREE.Vector3(x - 1.7, .32, z - direction * .72), new THREE.Vector3(x - 1.7, 1.0, z - direction * .72));
-    railBar(group, new THREE.Vector3(x - 1.7, 1.0, z - direction * .72), new THREE.Vector3(x + 1.7, 1.0, z - direction * .72));
-    railBar(group, new THREE.Vector3(x + 1.7, 1.0, z - direction * .72), new THREE.Vector3(x + 1.7, .32, z - direction * .72));
-    for (let bikeIndex = 0; bikeIndex < 6; bikeIndex++) bicycle(x - 1.45 + bikeIndex * .56, z + direction * (.25 + (bikeIndex % 2) * .45), direction * .18, .365);
+  function bicycleCourt(planPointX, planPointY, angle) {
+    const x = planX(planPointX), z = planZ(planPointY);
+    box([4.2, .17, 1.9], [x, .28, z], materials.soffit, group, false);
+    railBar(group, new THREE.Vector3(x - 1.9, .32, z - .75), new THREE.Vector3(x - 1.9, .95, z - .75));
+    railBar(group, new THREE.Vector3(x - 1.9, .95, z - .75), new THREE.Vector3(x + 1.9, .95, z - .75));
+    railBar(group, new THREE.Vector3(x + 1.9, .95, z - .75), new THREE.Vector3(x + 1.9, .32, z - .75));
+    for (let index = 0; index < 7; index++) bicycle(x - 1.6 + index * .54, z + .2 + (index % 2) * .42, angle, .365);
   }
-  function pathwayRamp(x, z, direction = 1) {
-    // Narrow, gently rising access paths frame the central open court.  `direction`
-    // points from the outer edge towards the building, so the front/back layouts mirror.
-    const width = .88; const run = 4.35; const rise = .48; const thickness = .08; const half = width / 2;
-    const vertices = new Float32Array([
-      -half, 0, 0, half, 0, 0, -half, rise, run, half, rise, run,
-      -half, -thickness, 0, half, -thickness, 0, -half, rise - thickness, run, half, rise - thickness, run,
-    ]);
-    const indices = [0, 1, 3, 0, 3, 2, 4, 7, 5, 4, 6, 7, 0, 4, 5, 0, 5, 1, 2, 3, 7, 2, 7, 6, 0, 2, 6, 0, 6, 4, 1, 5, 7, 1, 7, 3];
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3)); geometry.setIndex(indices); geometry.computeVertexNormals();
-    const ramp = new THREE.Mesh(geometry, materials.pathway);
-    ramp.position.set(x, .22, z); ramp.rotation.y = direction < 0 ? Math.PI : 0; ramp.castShadow = true; ramp.receiveShadow = true; group.add(ramp);
-  }
-  function compactStair(x, z, direction = 1) {
-    for (let step = 0; step < 3; step++) {
-      const level = step + 1;
-      box([1.52 + level * .10, level * .15, .38], [x, level * .075 + .18, z + direction * step * .30], materials.band, group, false);
-    }
-  }
-  // Each face is one composition: twin sloped paths, a large empty central court, then
-  // one three-step threshold immediately beside the residence. There are no side steps.
-  box([4.18, .045, 4.48], [0, .215, 4.58], materials.band, group, false);
-  box([4.18, .045, 4.48], [0, .215, -4.58], materials.band, group, false);
-  pathwayRamp(-2.58, 6.74, -1); pathwayRamp(2.58, 6.74, -1);
-  pathwayRamp(-2.58, -6.74, 1); pathwayRamp(2.58, -6.74, 1);
-  compactStair(0, 2.60, -1); compactStair(0, -2.60, 1);
-
-  // Mirrored raised cycle courts and planter seating islands occupy the sheltered corners.
-  bicycleCourt(-5.35, 1.78, 1); bicycleCourt(5.35, 1.78, 1);
-  bicycleCourt(-5.35, -1.78, -1); bicycleCourt(5.35, -1.78, -1);
-  planterSeat(-2.7, 0, .08); planterSeat(2.7, 0, -.08);
+  // Both concave courts, plus the approach in front of the two southern pods.
+  bicycleCourt(980, 720, .12); bicycleCourt(1140, 720, -.1);
+  planterSeat(planX(1058), planZ(640));
+  bicycleCourt(640, 300, .1); bicycleCourt(800, 300, -.12);
+  planterSeat(planX(720), planZ(400));
+  bicycleCourt(560, 990, 0); bicycleCourt(1300, 990, 0);
+  planterSeat(planX(300), planZ(640)); planterSeat(planX(1620), planZ(360));
 
   return { group, floorGroups, roomMeshes, signs };
 }
 
-// A single shared building instance, recoloured per whichever hostel is
-// currently selected. An earlier version of this file rendered up to 3
-// hostels side by side for comparison — reverted (see docs/PROGRESS.md):
-// the shared camera meant orbiting moved all 3 together, independent
-// per-building orbiting would have needed a split-viewport rewrite, and
-// none of that fixed the real cause of the lag (3x the detailed geometry
-// rendering every frame either way).
 const residential = createResidentialBuilding();
 scene.add(residential.group);
 
@@ -430,7 +477,6 @@ function setFloor(value) {
   residential.floorGroups.forEach((floorGroup, index) => { floorGroup.visible = isolatedFloor === null || index === isolatedFloor; });
   readout.innerHTML = isolatedFloor === null ? `<strong>All residential levels</strong><span>Drag to rotate · scroll to zoom · click a room</span>` : `<strong>Floor ${String(isolatedFloor + 1).padStart(2, '0')} isolated</strong><span>Click a coloured room to inspect its status</span>`;
 }
-const DEFAULT_CAMERA = { position: [31, 27, 35], target: [0, 10.5, 0] };
 function zoomIn() { camera.position.lerp(controls.target, .18); controls.update(); }
 function zoomOut() {
   const outward = camera.position.clone().sub(controls.target).multiplyScalar(1.22).add(controls.target);
@@ -522,7 +568,7 @@ hostelNames.forEach((name, index) => {
   const shell = box([width, height, depth], [x, height / 2 + .18, z], material, group);
   shell.userData = { hostel: name };
   cityPickMeshes.push(shell);
-  const roofMaterial = isPod ? materials.podWhite : materials.roof;
+  const roofMaterial = isPod ? materials.podWhite : materials.band;
   const facadeMaterial = isPod ? materials.podGreen : (isNewHousing ? materials.louvre : cityWindow);
   box([width + .34, .15, depth + .34], [x, height + .28, z], roofMaterial, group, false);
   for (let level = 0; level < (isNewHousing ? 4 : 3); level++) {
@@ -593,11 +639,9 @@ function setFriendMode(friends) {
   } else {
     cityGroup.visible = false;
     clearCityLights();
-    controls.minDistance = 14;
-    controls.maxDistance = 48;
-    controls.target.set(0, 10.5, 0);
-    camera.position.set(31, 27, 35);
-    controls.update();
+    controls.minDistance = 16;
+    controls.maxDistance = 105;
+    resetView();
     residential.group.visible = true;
     activeRoomMeshes = residential.roomMeshes;
   }
@@ -606,6 +650,13 @@ function setFriendMode(friends) {
 /* ── Pointer interaction ──────────────────────────────────────────────── */
 
 const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2();
+/* Raycaster does not honour visibility, and a room panel's own flag stays true
+   when setFloor() hides its floor group — so isolating a floor has to be walked
+   up the parents or clicks land on rooms nobody can see. */
+function pickable(mesh) {
+  for (let node = mesh; node; node = node.parent) if (!node.visible) return false;
+  return true;
+}
 canvas.addEventListener('pointerdown', event => {
   const rect = canvas.getBoundingClientRect(); pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1; pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
@@ -614,14 +665,14 @@ canvas.addEventListener('pointerdown', event => {
     if (cityHit?.object.userData.hostel) window.dispatchEvent(new CustomEvent('nivas:open-friend-location', { detail: { hostel: cityHit.object.userData.hostel } }));
     return;
   }
-  const hit = raycaster.intersectObjects(activeRoomMeshes.filter(mesh => mesh.visible), false)[0];
+  const hit = raycaster.intersectObjects(activeRoomMeshes.filter(pickable), false)[0];
   if (!hit) return;
   const info = hit.object.userData; const labels = { unlisted: 'Unlisted', occupied: 'Registered', open: 'Open to swap', match: 'Match for you', waitlist: 'Waitlisted' };
-  readout.innerHTML = `<strong>${info.hostel} · Room ${String(info.floor + 1).padStart(2, '0')}-${info.room}</strong><span>${labels[info.status]} · click another room to explore</span>`;
+  readout.innerHTML = `<strong>${info.hostel} · Room ${String(info.floor + 1).padStart(2, '0')}-${String(info.room).padStart(2, '0')}</strong><span>Pod ${info.pod} · ${labels[info.status]} · click another room to explore</span>`;
   activeRoomMeshes.forEach(mesh => mesh.material.emissiveIntensity = mesh === hit.object ? .9 : .17);
   if (info.visualRoomId) window.dispatchEvent(new CustomEvent('nivas:room-click', { detail: { id: info.visualRoomId } }));
 });
-canvas.addEventListener('pointermove', event => { const rect = canvas.getBoundingClientRect(); pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1; pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1; raycaster.setFromCamera(pointer, camera); const targets = cityMode ? cityPickMeshes : activeRoomMeshes.filter(mesh => mesh.visible); canvas.style.cursor = raycaster.intersectObjects(targets, false).length ? 'pointer' : 'grab'; });
+canvas.addEventListener('pointermove', event => { const rect = canvas.getBoundingClientRect(); pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1; pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1; raycaster.setFromCamera(pointer, camera); const targets = cityMode ? cityPickMeshes : activeRoomMeshes.filter(pickable); canvas.style.cursor = raycaster.intersectObjects(targets, false).length ? 'pointer' : 'grab'; });
 
 function resize() { const { width, height } = canvas.getBoundingClientRect(); if (!width || !height) return; camera.aspect = width / height; camera.updateProjectionMatrix(); renderer.setSize(width, height, false); }
 function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
