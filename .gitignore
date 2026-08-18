@@ -4,7 +4,3 @@ Thumbs.db
 tmp/
 api/config.php
 *.log
-
-# Superseded builds kept locally for reference. Must never be committed:
-# the repo deploys to public_html, so anything here would be served publicly.
-Archive/

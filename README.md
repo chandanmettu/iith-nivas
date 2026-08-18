@@ -17,6 +17,9 @@ real students, on a PHP/MySQL backend.
 
 ---
 
+Known bugs and accepted gaps live in [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) —
+read it before assuming something is broken by accident.
+
 ## Why this exists
 
 Room swaps at IITH mostly happen through scattered WhatsApp messages — no way
