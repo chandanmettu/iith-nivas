@@ -5,9 +5,11 @@ browse all 16 boys' hostels, orbit a genuinely detailed 3D building model,
 walk floor by floor across the real architectural drawing, and post or find a
 room swap. No app, no login wall, no invented data.
 
-<!-- Swap this for a real screenshot or short GIF once it's live —
-     a wide shot of the 3D viewer + floor plan side by side works best. -->
-> 🖼️ *Screenshot / demo GIF coming once this is deployed.*
+**Live at [nivas.iith.online](https://nivas.iith.online)** — real listings from
+real students, on a PHP/MySQL backend.
+
+<!-- Still worth adding: a wide shot of the 3D viewer + floor plan side by side. -->
+> 🖼️ *Screenshot / demo GIF still to be added.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![No framework](https://img.shields.io/badge/frontend-vanilla%20JS-informational)
