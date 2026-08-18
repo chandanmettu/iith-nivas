@@ -328,7 +328,10 @@ function currentBuilding() {
 }
 function activeRoomShapes() { return roomShapes; }
 function roomId(index) { return `${activeFloor}${String(index + 1).padStart(2, "0")}`; }
-function initials(name) { return name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase(); }
+// Escaped because the result goes straight into innerHTML at the avatar. Only
+// two characters survive, so this was never an executable payload, but an
+// unescaped "<" still corrupts the surrounding markup.
+function initials(name) { return escapeHtml(String(name || "").split(/\s+/).slice(0, 2).map(part => part[0] || "").join("").toUpperCase()); }
 function ownListing() { return state.profile ? sanitiseListing(state.profile) : null; }
 function activeListings() {
   const own = ownListing();

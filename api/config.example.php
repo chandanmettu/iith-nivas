@@ -26,6 +26,14 @@ return [
     // allow any address (not recommended — it removes the only identity check).
     'email_domain' => 'iith.ac.in',
 
+    // Sender for verification-code emails. REQUIRED whenever
+    // require_verification is true — nivas_mail() reads both keys, and without
+    // them no code can be sent, which means nobody can publish a listing at all.
+    // Use a real mailbox on your own domain; Hostinger's mail() is rejected by
+    // most providers when the From address doesn't match the sending host.
+    'mail_from'      => 'nivas@example.com',
+    'mail_from_name' => 'Nivas',
+
     // false = anyone who submits the form is published immediately.
     // true  = the address must enter a code mailed to it first. Keep this on:
     //         it is what stops a student publishing someone else's phone number.

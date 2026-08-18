@@ -201,6 +201,13 @@ function nivas_throttle(string $bucket, int $limit, int $seconds): void
 function nivas_mail(string $to, string $subject, string $body): bool
 {
     $config = nivas_config();
+    // Fail loudly rather than sending "From:  <>", which silently gets dropped
+    // by most providers and looks like a mail-delivery problem instead of a
+    // missing config key. Both keys are in config.example.php.
+    if (empty($config['mail_from']) || empty($config['mail_from_name'])) {
+        error_log('Nivas: mail_from / mail_from_name missing from config.php — cannot send verification codes');
+        return false;
+    }
     $from    = $config['mail_from'];
     $name    = $config['mail_from_name'];
     $headers = implode("\r\n", [

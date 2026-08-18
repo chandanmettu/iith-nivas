@@ -29,12 +29,22 @@ Fill in:
 | `allowed_origins` | your live URL. Nothing else may call the API from a browser. |
 | `email_domain` | `iith.ac.in` — listings can only be created from an institute address |
 | `require_verification` | **keep `true`** (see Safety below) |
+| `mail_from` / `mail_from_name` | sender for verification codes — **required** when `require_verification` is true |
 
-No mailbox is configured for this deployment. Feature requests save straight
-to `nivas_feedback` — check that table in phpMyAdmin instead of expecting an
-email. Verification codes (`require_verification: true`) also need
-`nivas_mail()` to actually deliver, so re-add `mail_from`/`feedback_to` to
-`config.php` first if you turn that back on.
+**`mail_from` and `mail_from_name` are not optional with verification on.**
+`nivas_mail()` needs both to build a valid `From:` header. Without them no code
+can be sent, `verify.php` returns 500, and nobody can publish a listing at all —
+verification is the only identity check in the system, so the whole write path
+stops. Both keys are in `config.example.php`; `nivas_mail()` now logs a specific
+error rather than sending a malformed header if either is missing.
+
+Point `mail_from` at a real mailbox **on the sending domain** — shared hosts'
+`mail()` output is widely rejected when the From address doesn't match the host.
+If codes send but never arrive, that mismatch is the first thing to check.
+
+Feature requests are separate: they save straight to `nivas_feedback` with no
+mail involved, so read that table in phpMyAdmin. (Older notes mention a
+`feedback_to` key — it was never implemented and nothing reads it.)
 
 ## 3. Upload
 
