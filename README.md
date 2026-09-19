@@ -12,7 +12,7 @@ is no app to install, no login wall and no invented data.
 | | |
 |---|---|
 | **Live** | [nivas.iith.online](https://nivas.iith.online), with real listings from real students on PHP/MySQL |
-| **Repository** | `github.com/chandanmettu/iith-nivas` (public). The local folder is still called `iith-hostels`. |
+| **Repository** | `github.com/chandanmettu/iith-nivas` (public). |
 | **Push via** | SSH host alias `github-nivas` (remote `git@github-nivas:chandanmettu/iith-nivas.git`) |
 | **Deploy** | Hostinger Git auto-deploy from `main`. **A push is a production release.** |
 

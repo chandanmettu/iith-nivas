@@ -60,7 +60,7 @@ product enhancements, not deployment blockers.
 ### 2026-09-19 — Workspace cleanup and docs handover pass
 
 - Verified the live `index.html` is byte-identical to `main` HEAD.
-- README rewritten for handover. The real repo slug is `chandanmettu/iith-nivas`; the local folder is still `iith-hostels`. It now also records the SSH alias and the release checklist.
+- README rewritten for handover. The real repo slug is `chandanmettu/iith-nivas`; the local folder was renamed `Nivas` the same day. It now also records the SSH alias and the release checklist.
 - The 2026-09-05 trim of this file was committed. The old 1,200-line log is preserved verbatim in `archive/PROGRESS-pre-deployment.md` (checked byte-for-byte).
 - `Archive/` (superseded prototypes) is now git-ignored and stays local only. The stray `tmp/` folder, which held unrelated calculus-worksheet renders, was removed from the project.
 
