@@ -94,7 +94,7 @@ Built on branch `v2`. `main` and the live site are untouched until he approves a
 - Old vendored r160 files moved to `_to-delete/IITH/Nivas/vendor/`.
 - **Before merging:** verify on a real phone; check the host serves `.webp` as
   `image/webp`; bump `?v=` again if any file changes (currently styles 49,
-  app 34, viewer3d 29). Merging `v2` into `main` also carries the earlier
+  app 34, viewer3d 31). Merging `v2` into `main` also carries the earlier
   unpushed docs commit `71d8070`.
 - Headless checks only so far (Chrome with software WebGL): desktop 1440,
   tablet 820 and 1000, phone 390, reduced motion, no-WebGL. Not yet seen on a

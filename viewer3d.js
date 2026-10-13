@@ -553,8 +553,8 @@ function drawn(width, height, paint) {
   return repeating(surface);
 }
 const herringbone = drawn(256, 256, ctx => {
-  const random = seeded(5), palette = ['#a39384', '#968878', '#b0a08e', '#8d7f71', '#a68976', '#7f7468'];
-  ctx.fillStyle = '#6e6458'; ctx.fillRect(0, 0, 256, 256);
+  const random = seeded(5), palette = ['#9d9084', '#978a7f', '#a39689', '#928579', '#9b8c80', '#8e8176'];
+  ctx.fillStyle = '#7d7268'; ctx.fillRect(0, 0, 256, 256);
   for (let row = -1; row <= 16; row++) for (let col = -1; col <= 16; col++) {
     ctx.save();
     ctx.translate(col * 16 + 8, row * 16 + 8);
@@ -574,10 +574,10 @@ const stoneSlabs = drawn(256, 256, ctx => {
 });
 const dryEarth = drawn(256, 256, ctx => {
   const random = seeded(3);
-  ctx.fillStyle = '#928669'; ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = '#8a8571'; ctx.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 1400; i++) {
-    const shade = 125 + Math.floor(random() * 60);
-    ctx.fillStyle = `rgba(${shade}, ${shade - 12}, ${shade - 42}, ${.14 + random() * .2})`;
+    const shade = 125 + Math.floor(random() * 50);
+    ctx.fillStyle = `rgba(${shade}, ${shade - 6}, ${shade - 24}, ${.08 + random() * .12})`;
     ctx.fillRect(random() * 256, random() * 256, 2 + random() * 5, 2 + random() * 3);
   }
 });
