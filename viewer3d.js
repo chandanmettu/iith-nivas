@@ -1094,6 +1094,9 @@ function resize() {
   invalidate();
 }
 window.addEventListener('resize', resize);
+// A phone can drop the GL context while the tab is in the background. three.js
+// rebuilds its state; we only have to ask for a fresh frame.
+canvas.addEventListener('webglcontextrestored', () => { shadowDirty = true; invalidate(); });
 new ResizeObserver(resize).observe(canvas);
 new IntersectionObserver(([entry]) => { onScreen = entry.isIntersecting; if (onScreen) invalidate(); }).observe(canvas);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) invalidate(); });
