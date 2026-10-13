@@ -6,10 +6,11 @@ import { PLAN_ORIGIN, OUTLINE, ROOM_FACADE, VOID_FACADE } from './plan-geometry.
    NIVAS 3D — v2
 
    One hostel block, built from the traced floor plan (plan-geometry.js) and
-   dressed to match the architect's render in assets/iith-hostel-facade.png:
-   white slab ribbons at every floor, terracotta louvres over deep balconies,
-   glazed room windows, an open pilotis ground floor on columns, and the
-   floating roof canopy with its lit soffit.
+   refined against photographs of the real blocks (Kalam, Bhabha) and the
+   satellite view of the cluster: thick white slab ribbons, red-orange louvres
+   over deep balconies, tall slit windows, an enclosed white ground floor under
+   the cantilevers, a plain parapet roof with solar arrays, paved courtyards,
+   and the seven neighbouring blocks placed from OpenStreetMap footprints.
 
    What changed from v1 (kept whole in docs/archive/viewer3d-v1.js):
    - Rooms are real windows. Each floor's 30 panes are one InstancedMesh, so
@@ -47,13 +48,13 @@ renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.shadowMap.autoUpdate = false;   // redrawn only when something casting one moves
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog('#c9a9a6', 90, 260);
-const camera = new THREE.PerspectiveCamera(34, 1, .5, 700);
+scene.fog = new THREE.Fog('#c9a9a6', 110, 420);
+const camera = new THREE.PerspectiveCamera(34, 1, .5, 900);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.dampingFactor = .085;
-controls.minDistance = 14;
-controls.maxDistance = 130;
+controls.minDistance = 9;
+controls.maxDistance = 170;
 controls.maxPolarAngle = Math.PI * .475;
 controls.zoomSpeed = .8;
 controls.rotateSpeed = .7;
@@ -63,7 +64,7 @@ scene.add(hemi);
 const sun = new THREE.DirectionalLight();
 sun.castShadow = true;
 sun.shadow.mapSize.setScalar(compact ? 1024 : 2048);
-Object.assign(sun.shadow.camera, { left: -34, right: 34, top: 34, bottom: -34, near: 1, far: 160 });
+Object.assign(sun.shadow.camera, { left: -48, right: 48, top: 48, bottom: -48, near: 1, far: 240 });
 sun.shadow.bias = -.0005;
 sun.shadow.normalBias = .03;
 scene.add(sun, sun.target);
@@ -73,17 +74,19 @@ scene.add(fill);
 /* ── Dimensions (one world unit is about 2 m) ─────────────────────────────── */
 
 const FLOOR_COUNT = 10;
-const PLAN_SCALE = .0254;        // one plan pixel is about 5 cm
+/* One plan pixel is 3.4 cm. v1 guessed 5 cm; two independent checks say 3.4:
+   OpenStreetMap has this block type at 56.1 x 30.1 m against 1626 x 899 plan px
+   in the same frame, and at 5 cm a single room would be 20 m2 instead of ~9. */
+const PLAN_SCALE = .017;
 const floorHeight = 1.6;         // ~3.2 m
-const groundClearance = 2.0;     // the tall open pilotis level
-const bandHeight = .47;          // white slab ribbon at each floor line
+const groundClearance = 2.0;     // ground floor, ~4 m
+const bandHeight = .56;          // white slab ribbon at each floor line (thick, as photographed)
 const bandOut = .10;             // how far that ribbon oversails the wall
 const wallIn = .16;              // room wall, set back behind the ribbon
 const balconyIn = .78;           // balcony wall, set much deeper behind the louvres
-const louvreBase = .42;          // fins start where the ribbon stops
+const louvreBase = .51;          // fins start where the ribbon stops
 const finHeight = floorHeight - louvreBase - .04;
 const roofLevel = groundClearance + floorHeight * FLOOR_COUNT;
-const canopyY = roofLevel + 2.35;
 const STACK_GAP = 1.35;          // extra height between floors in stack view
 const LIFT = 34;                 // how far the floors above an opened floor fly
 
@@ -114,26 +117,22 @@ function withGlow(material, perInstance) {
 const materials = {
   wall: new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .86 }),
   slab: new THREE.MeshStandardMaterial({ color: '#d9d1c4', roughness: .9 }),   // floor caps ignore the wall's vertex colours
-  band: new THREE.MeshStandardMaterial({ color: '#f1ece3', roughness: .55 }),
-  fins: new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .72 }),
-  frame: new THREE.MeshStandardMaterial({ color: '#2d2624', roughness: .5, metalness: .35 }),
-  sill: new THREE.MeshStandardMaterial({ color: '#ece6dc', roughness: .6 }),
+  band: new THREE.MeshStandardMaterial({ color: '#e8e4dc', roughness: .8 }),
+  fins: new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .78 }),
+  frame: new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .7 }),
+  sill: new THREE.MeshStandardMaterial({ color: '#e8e4dc', roughness: .7 }),
   glass: withGlow(new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .22, metalness: .15 }), true),
   tile: withGlow(new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .7 }), false),
   partition: new THREE.MeshStandardMaterial({ color: '#f6f1e8', roughness: .8 }),
-  ground: new THREE.MeshStandardMaterial({ color: '#c79b6c', emissive: '#ffb066', emissiveIntensity: 0, roughness: .9 }),
-  column: new THREE.MeshStandardMaterial({ color: '#f0ebe2', roughness: .7 }),
-  paving: new THREE.MeshStandardMaterial({ color: '#d8cfc3', roughness: .95 }),
-  path: new THREE.MeshStandardMaterial({ color: '#e7e1d7', roughness: .9 }),
-  lawn: new THREE.MeshStandardMaterial({ color: '#6c8a52', roughness: 1, transparent: true }),
-  canopy: new THREE.MeshStandardMaterial({ color: '#f4f0e8', roughness: .55 }),
-  soffit: new THREE.MeshStandardMaterial({ color: '#f1e9dc', emissive: '#ffcf8a', emissiveIntensity: 0, roughness: .8 }),
-  deck: new THREE.MeshStandardMaterial({ color: '#cfc6b8', emissive: '#ffb969', emissiveIntensity: 0, roughness: .95 }),
-  metal: new THREE.MeshStandardMaterial({ color: '#4a3a36', roughness: .55, metalness: .45 }),
-  planter: new THREE.MeshStandardMaterial({ color: '#b9ad9c', roughness: .92 }),
-  soil: new THREE.MeshStandardMaterial({ color: '#5e4937', roughness: 1 }),
+  ground: new THREE.MeshStandardMaterial({ color: '#e6e1d6', emissive: '#ffb066', emissiveIntensity: 0, roughness: .92 }),
+  column: new THREE.MeshStandardMaterial({ color: '#ece8df', roughness: .8 }),
+  deck: new THREE.MeshStandardMaterial({ color: '#b9b2a6', roughness: .95 }),
+  metal: new THREE.MeshStandardMaterial({ color: '#3b3735', roughness: .55, metalness: .45 }),
+  planter: new THREE.MeshStandardMaterial({ color: '#d8d0c0', roughness: .95 }),
+  soil: new THREE.MeshStandardMaterial({ color: '#7a5636', roughness: 1 }),
   trunk: new THREE.MeshStandardMaterial({ color: '#6b4a34', roughness: 1 }),
-  crown: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1, flatShading: true }),
+  crown: new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: 1, flatShading: true }),
+  foliage: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1, flatShading: true }),
   lamp: new THREE.MeshBasicMaterial({ color: '#ffd9a0', toneMapped: false }),
   pin: new THREE.MeshBasicMaterial({ color: '#f05a25', toneMapped: false }),
   pinHalo: new THREE.MeshBasicMaterial({ color: '#f05a25', transparent: true, opacity: .35, depthWrite: false, toneMapped: false }),
@@ -252,27 +251,6 @@ function slabGeometry(points, height, holePoints, bevel = 0) {
   if (bevel) geometry.translate(0, bevel, 0);
   return geometry;
 }
-/* A flat ring, facing DOWN, for the canopy's lit underside. Where the inner
-   outline folds back on a tight curve the triangulator emits a few flipped
-   slivers; they showed up as stray specks in the sky. Only triangles that agree
-   with the ring's winding are kept (and flipped to face down). */
-function ringFlat(outer, inner) {
-  const shape = shapeOf(outer);
-  shape.holes.push(new THREE.Path(inner.slice().reverse().map(point => new THREE.Vector2(point.x, -point.y))));
-  const source = new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2).toNonIndexed();
-  const position = source.attributes.position, kept = [];
-  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
-  for (let i = 0; i < position.count; i += 3) {
-    a.fromBufferAttribute(position, i); b.fromBufferAttribute(position, i + 1); c.fromBufferAttribute(position, i + 2);
-    const facing = (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);   // y of (b-a)x(c-a)
-    if (facing < -1e-6) kept.push(a.x, a.y, a.z, c.x, c.y, c.z, b.x, b.y, b.z);   // reversed: faces down
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(kept, 3));
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
 /* Which stretches of the perimeter are room facade, and which are louvred
    balcony. Rooms only ever front onto the straight runs. */
 const facadeRuns = [...ROOM_FACADE, ...VOID_FACADE].filter(Boolean);
@@ -320,6 +298,7 @@ const roomFrames = ROOM_FACADE.map(run => run && runFrame(run[0], run[1]));
 const ROOM_COUNT = roomFrames.length;
 const POD_SIZES = [8, 8, 6, 8];
 const podOfRoom = POD_SIZES.flatMap((size, index) => Array(size).fill(index + 1));
+const POD_CENTRES = [[346.5, 337.5], [702, 692.5], [1058, 337.5], [1414.5, 692.5]];   // plan px
 const roomIdOf = (floor, roomIndex) => `${floor + 1}${String(roomIndex + 1).padStart(2, '0')}`;
 
 /* ── The room layout, from the same SVG paths the floor plan draws ───────── */
@@ -383,7 +362,7 @@ const wallGeometry = (() => {
   // gaps between louvres read as shadowed depth, the way the render shows it.
   const geometry = slabGeometry(wallRing, floorHeight);
   const position = geometry.attributes.position, colors = [];
-  const room = new THREE.Color('#9c3d2b'), deep = new THREE.Color('#3a1a16'), tone = new THREE.Color();
+  const room = new THREE.Color('#c8452d'), deep = new THREE.Color('#5a362d'), tone = new THREE.Color();
   for (let i = 0; i < position.count; i++) {
     const x = position.getX(i), z = position.getZ(i);
     let best = Infinity, nearest = 0;
@@ -401,37 +380,40 @@ const wallGeometry = (() => {
 const bandGeometry = slabGeometry(shellRing(bandOut), bandHeight, null, .07);
 
 const finGeometry = (() => {
-  // Real fins sit roughly 0.3 m apart: sample the ring at twice its stored
-  // resolution, skip anything a room fronts onto, vary each fin's tone a touch
-  // so the screen reads as fired terracotta, not a printed stripe.
-  const random = seeded(7);
-  const base = new THREE.Color('#c4573a');
+  // Louvre blades every ~26 cm of facade, placed by arc length along the balcony runs
+  // (the traced outline's own spacing is finer than the real pitch). Each blade is a
+  // touch different in tone, so the screen reads as painted concrete, not a stripe.
+  const random = seeded(7), PITCH = .13;
+  const base = new THREE.Color('#cf5236');
   const parts = [];
+  let carry = 0;
   for (let index = 0; index < RING; index++) {
-    if (!isBalcony[index] || !isBalcony[(index + 1) % RING]) continue;
-    for (const step of [0, .5]) {
-      const next = (index + 1) % RING;
-      const x = ring[index].x + (ring[next].x - ring[index].x) * step;
-      const z = ring[index].y + (ring[next].y - ring[index].y) * step;
-      const normal = normals[index];
-      const tone = base.clone().offsetHSL((random() - .5) * .02, (random() - .5) * .06, (random() - .5) * .07);
+    const next = (index + 1) % RING;
+    if (!isBalcony[index] || !isBalcony[next]) { carry = 0; continue; }
+    const a = ring[index], b = ring[next], length = a.distanceTo(b), normal = normals[index];
+    let at = carry;
+    for (; at < length; at += PITCH) {
+      const t = at / length;
+      const x = a.x + (b.x - a.x) * t, z = a.y + (b.y - a.y) * t;
       parts.push({
         geometry: SLIM_BOX,
-        matrix: matrixOf([x + normal.x * (-wallIn + .1), louvreBase + finHeight / 2, z + normal.y * (-wallIn + .1)], headings[index], [.055, finHeight, .3]),
-        color: tone,
+        matrix: matrixOf([x + normal.x * (-wallIn + .06), louvreBase + finHeight / 2, z + normal.y * (-wallIn + .06)], headings[index], [.065, finHeight, .36]),
+        color: base.clone().offsetHSL((random() - .5) * .02, (random() - .5) * .08, (random() - .5) * .08),
       });
     }
+    carry = at - length;
   }
   return bake(parts, true);
 })();
 
-/* Each room's window: glass (instanced, carries the status), and a frame of
-   head, sill, jambs, two mullions and a transom, baked into one geometry that
-   every floor shares. */
-const WIN_BOTTOM = louvreBase + .07, WIN_HEIGHT = .98;
+/* Each room's window is a group of tall slits, as photographed: one glass pane
+   (instanced, carries the status colour) behind red piers that continue the wall.
+   Frames, piers and the head rail share one geometry for every floor. */
+const WIN_BOTTOM = louvreBase + .09, WIN_HEIGHT = floorHeight - WIN_BOTTOM - .16;
+const SLITS = 3, PIER = .055;
 const windowFrames = roomFrames.map(frame => frame && {
   ...frame,
-  width: Math.max(.6, frame.length - .18),
+  width: Math.max(.6, frame.length - .1),
   matrixAt(local, scale, depth) {
     const world = new THREE.Matrix4().makeTranslation(frame.x + frame.nx * (-wallIn + depth), 0, frame.z + frame.nz * (-wallIn + depth));
     world.multiply(new THREE.Matrix4().makeRotationY(frame.angle));
@@ -440,17 +422,17 @@ const windowFrames = roomFrames.map(frame => frame && {
   },
 });
 const frameGeometry = (() => {
-  const parts = [], sills = [];
+  const parts = [], sills = [], pier = new THREE.Color('#c4452c'), dark = new THREE.Color('#2a2326');
   windowFrames.forEach(w => {
     if (!w) return;
-    const mid = WIN_BOTTOM + WIN_HEIGHT / 2, half = w.width / 2;
-    parts.push({ geometry: SLIM_BOX, matrix: w.matrixAt([0, WIN_BOTTOM + WIN_HEIGHT + .03, 0], [w.width + .08, .06, .1], .05) });
-    [-half - .01, half + .01].forEach(x => parts.push({ geometry: SLIM_BOX, matrix: w.matrixAt([x, mid, 0], [.06, WIN_HEIGHT + .06, .1], .05) }));
-    [-w.width / 6, w.width / 6].forEach(x => parts.push({ geometry: SLIM_BOX, matrix: w.matrixAt([x, mid, 0], [.035, WIN_HEIGHT, .07], .05) }));
-    parts.push({ geometry: SLIM_BOX, matrix: w.matrixAt([0, WIN_BOTTOM + WIN_HEIGHT * .68, 0], [w.width, .035, .07], .05) });
-    sills.push({ geometry: SLIM_BOX, matrix: w.matrixAt([0, WIN_BOTTOM - .035, 0], [w.width + .16, .07, .2], .08) });
+    const mid = WIN_BOTTOM + WIN_HEIGHT / 2, half = w.width / 2, slit = (w.width - PIER * (SLITS + 1)) / SLITS;
+    for (let k = 0; k <= SLITS; k++) {
+      parts.push({ geometry: SLIM_BOX, color: pier, matrix: w.matrixAt([-half + PIER / 2 + k * (slit + PIER), mid, 0], [PIER, WIN_HEIGHT + .1, .1], .06) });
+    }
+    parts.push({ geometry: SLIM_BOX, color: dark, matrix: w.matrixAt([0, WIN_BOTTOM + WIN_HEIGHT + .03, 0], [w.width, .05, .08], .05) });
+    sills.push({ geometry: SLIM_BOX, matrix: w.matrixAt([0, WIN_BOTTOM - .04, 0], [w.width + .1, .06, .16], .07) });
   });
-  return { frames: bake(parts), sills: bake(sills) };
+  return { frames: bake(parts, true), sills: bake(sills) };
 })();
 
 function makeFloor(floor) {
@@ -509,164 +491,387 @@ function makeFloor(floor) {
 }
 for (let floor = 0; floor < FLOOR_COUNT; floor++) floors.push(makeFloor(floor));
 
-/* Open pilotis ground level: a set-back tan volume behind a white colonnade,
-   with downlights under the first slab, the way the render shows it. */
-mesh(slabGeometry(shellRing(-1.0), groundClearance - .18), [materials.ground, materials.ground], groundGroup, { y: .16 });
-{
-  const columnSpots = [];
-  for (let index = 0; index < RING; index += 9) columnSpots.push(index);
-  const columns = new THREE.InstancedMesh(new THREE.CylinderGeometry(.12, .14, groundClearance - .1, 12), materials.column, columnSpots.length);
-  const lamps = new THREE.InstancedMesh(new THREE.CircleGeometry(.13, 12).rotateX(Math.PI / 2), materials.lamp, columnSpots.length);
-  columnSpots.forEach((index, i) => {
-    const p = ring[index], n = normals[index];
-    columns.setMatrixAt(i, matrixOf([p.x - n.x * .3, (groundClearance - .1) / 2 + .14, p.y - n.y * .3]));
-    const q = ring[(index + 4) % RING], m = normals[(index + 4) % RING];
-    lamps.setMatrixAt(i, matrixOf([q.x - m.x * .55, groundClearance - .06, q.y - m.y * .55]));
-  });
-  columns.castShadow = true; columns.receiveShadow = true;
-  groundGroup.add(columns, lamps);
+/* ── The block's own ground floor, roof and furniture ────────────────────────
+
+   Refined against photographs of Kalam and Bhabha and the satellite view of the
+   eight-block cluster (docs/CAMPUS-RESEARCH.md): the ground floor is an enclosed
+   white volume tucked under the cantilevered slabs, courtyards are paved (stone
+   slabs, herringbone brick), planters hold one slender young tree, bicycles
+   gather at the doors, and the roofs carry a thick white parapet, solar arrays
+   and round water drums.
+
+   Everything below is built in the block's own frame. The seven neighbouring
+   blocks reuse the same geometry through InstancedMesh, so a whole cluster costs
+   a handful of extra draw calls. */
+
+const site = new THREE.Group();   // everything that isn't the selectable block
+scene.add(site);
+
+/* The eight new blocks, from OpenStreetMap footprints: metres east and north of
+   a fixed point, and the angle of each block's long axis. The first is the block
+   this view stands for (Kalam, the easternmost, so the rest of the cluster sits
+   behind it from the default camera); the others become its neighbours. Eight
+   positions are a small, one-off use of the data; the page credits OpenStreetMap
+   contributors. The model's own long axis is -15.7 deg in the same frame. */
+const CLUSTER = [
+  [2.3, -20.9, 82.8], [-17.0, -76.5, -8.8], [-87.0, -76.3, -8.8], [-135.3, -67.4, 76.4],
+  [-51.7, -38.3, -8.8], [-95.9, -22.6, 76.8], [-60.7, 25.5, 80.8], [-12.2, 29.8, -8.8],
+];
+const PLAN_AXIS_DEG = -15.7;
+const NEIGHBOURS = CLUSTER.slice(1).map(([east, north, axis]) => {
+  const [e0, n0, a0] = CLUSTER[0];
+  const delta = THREE.MathUtils.degToRad(PLAN_AXIS_DEG - a0);   // turn that lays the shown block's axis on the model's
+  const de = east - e0, dn = north - n0;
+  const e = de * Math.cos(delta) - dn * Math.sin(delta), n = de * Math.sin(delta) + dn * Math.cos(delta);
+  return { x: e / 2, z: -n / 2, yaw: THREE.MathUtils.degToRad(axis - a0) };   // 2 m per unit, north is -z
+});
+// Neighbours, their furniture and their shadows live in one group, so they can be switched off.
+const context = new THREE.Group();
+site.add(context);
+function neighbourInstances(geometry, material, { cast = true, receive = true, y = 0 } = {}) {
+  const instanced = new THREE.InstancedMesh(geometry, material, NEIGHBOURS.length);
+  NEIGHBOURS.forEach((t, i) => instanced.setMatrixAt(i, matrixOf([t.x, y, t.z], t.yaw)));
+  instanced.castShadow = cast; instanced.receiveShadow = receive;
+  instanced.computeBoundingSphere();
+  context.add(instanced);
+  return instanced;
 }
 
-// Plinth, lawn that fades into the sky, and a lit walk past the block.
-mesh(slabGeometry(shellRing(2.4), .14), [materials.paving, materials.paving], groundGroup, { cast: false, y: .02 });
+/* Procedural surfaces. Small canvases, repeated; mip-mapped so they settle to a
+   flat colour at distance instead of shimmering. */
+function repeating(surface, anisotropy = 4) {
+  const texture = new THREE.CanvasTexture(surface);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = anisotropy;
+  return texture;
+}
+function drawn(width, height, paint) {
+  const surface = document.createElement('canvas');
+  surface.width = width; surface.height = height;
+  paint(surface.getContext('2d'));
+  return repeating(surface);
+}
+const herringbone = drawn(256, 256, ctx => {
+  const random = seeded(5), palette = ['#a39384', '#968878', '#b0a08e', '#8d7f71', '#a68976', '#7f7468'];
+  ctx.fillStyle = '#6e6458'; ctx.fillRect(0, 0, 256, 256);
+  for (let row = -1; row <= 16; row++) for (let col = -1; col <= 16; col++) {
+    ctx.save();
+    ctx.translate(col * 16 + 8, row * 16 + 8);
+    ctx.rotate(((col + row) % 2 ? 1 : -1) * Math.PI / 4);
+    ctx.fillStyle = palette[Math.floor(random() * palette.length)];
+    ctx.fillRect(-10.5, -3.5, 21, 7);
+    ctx.restore();
+  }
+});
+const stoneSlabs = drawn(256, 256, ctx => {
+  const random = seeded(11), tones = ['#a8a39a', '#9d988f', '#b0aba1', '#948f86', '#a39e94'];
+  ctx.fillStyle = '#5f5a54'; ctx.fillRect(0, 0, 256, 256);
+  for (let row = 0; row < 8; row++) for (let col = 0; col < 4; col++) {
+    ctx.fillStyle = tones[Math.floor(random() * tones.length)];
+    ctx.fillRect(col * 64 + 1.5, row * 32 + 1.5, 61, 29);
+  }
+});
+const dryEarth = drawn(256, 256, ctx => {
+  const random = seeded(3);
+  ctx.fillStyle = '#928669'; ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 1400; i++) {
+    const shade = 125 + Math.floor(random() * 60);
+    ctx.fillStyle = `rgba(${shade}, ${shade - 12}, ${shade - 42}, ${.14 + random() * .2})`;
+    ctx.fillRect(random() * 256, random() * 256, 2 + random() * 5, 2 + random() * 3);
+  }
+});
+// One floor of the neighbouring blocks' facade: louvres above, the white slab ribbon at the
+// floor's foot (the UVs below put the bottom of the canvas at the bottom of the floor).
+const facadeFloor = drawn(256, 128, ctx => {
+  ctx.fillStyle = '#84483a'; ctx.fillRect(0, 0, 256, 80);
+  ctx.fillStyle = '#cf5236';
+  for (let i = 0; i < 16; i++) ctx.fillRect(i * 16 + 1, 0, 9, 80);
+  ctx.fillStyle = '#b9b3a8'; ctx.fillRect(0, 80, 256, 4);
+  ctx.fillStyle = '#e8e4dc'; ctx.fillRect(0, 84, 256, 44);
+});
+const asphalt = drawn(128, 128, ctx => {
+  const random = seeded(19);
+  ctx.fillStyle = '#5d5a55'; ctx.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 500; i++) { const v = 70 + Math.floor(random() * 50); ctx.fillStyle = `rgb(${v},${v - 2},${v - 6})`; ctx.fillRect(random() * 128, random() * 128, 1 + random() * 2, 1 + random() * 2); }
+});
+const poolLight = (() => {
+  const surface = document.createElement('canvas');
+  surface.width = surface.height = 128;
+  const ctx = surface.getContext('2d'), g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.35, 'rgba(255,255,255,.35)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
+  const texture = new THREE.CanvasTexture(surface);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+})();
+materials.earth = new THREE.MeshStandardMaterial({ map: dryEarth, roughness: 1, transparent: true });
+materials.road = new THREE.MeshStandardMaterial({ map: asphalt, roughness: .95 });
+materials.brick = new THREE.MeshStandardMaterial({ map: herringbone, roughness: .92 });
+materials.stone = new THREE.MeshStandardMaterial({ map: stoneSlabs, roughness: .9 });
+materials.lampPool = new THREE.MeshBasicMaterial({ map: poolLight, color: '#ffcf8a', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+materials.frameDetail = new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .6 });
+
+/* Ground floor: an enclosed cream volume set back under the slabs, with dark
+   windows and a few doors, and slender columns at the slab edge. */
+const groundVolume = slabGeometry(shellRing(-1.25), groundClearance - .18);
+const groundDetail = (() => {
+  const parts = [], dark = new THREE.Color('#2b2a2e'), door = new THREE.Color('#c9c7c1');
+  for (let index = 6; index < RING; index += 14) {
+    const p = ring[index], n = normals[index], at = (d) => [p.x - n.x * (1.25 - d), 0, p.y - n.y * (1.25 - d)];
+    const isDoor = (index / 14 | 0) % 3 === 0;
+    const base = at(.04);
+    parts.push({
+      geometry: UNIT_BOX,
+      matrix: matrixOf([base[0], isDoor ? .75 : 1.0, base[2]], headings[index], isDoor ? [.55, 1.15, .08] : [.8, .6, .08]),
+      color: isDoor ? door : dark,
+    });
+  }
+  return bake(parts, true);
+})();
+const columnGeometry = new THREE.CylinderGeometry(.11, .13, groundClearance - .1, 10);
+const columnSpots = [];
+for (let index = 0; index < RING; index += 12) columnSpots.push(index);
+const columnMatrices = columnSpots.map(index => {
+  const p = ring[index], n = normals[index];
+  return matrixOf([p.x - n.x * .3, (groundClearance - .1) / 2 + .14, p.y - n.y * .3]);
+});
+
+/* Court furniture, built once in the block's frame: round concrete planters with
+   a young tree, and bicycles in loose clusters at the doors, as in the photos. */
+const COURT_SEATS = [[1058, 640], [720, 400], [300, 640], [1620, 360]];
+const BIKE_SPOTS = [[980, 720, 7], [1140, 725, 6], [640, 300, 7], [800, 300, 6], [560, 985, 6], [1300, 985, 6], [330, 560, 4], [1590, 420, 4], [1010, 560, 5], [740, 470, 5]];
+const furniture = (() => {
+  const random = seeded(41);
+  const planter = [], soil = [], trunk = [], crown = [], bikes = [];
+  const wheel = new THREE.TorusGeometry(.27, .045, 3, 9), bar = new THREE.CylinderGeometry(1, 1, 1, 4, 1, true);
+  const blob = new THREE.IcosahedronGeometry(1, 0);
+  const frameTones = ['#1d1d20', '#20242b', '#9a2a22', '#2b4c7a', '#cfd2d6', '#18695c', '#303034', '#b0452a'].map(hex => new THREE.Color(hex));
+  const tyre = new THREE.Color('#2a2a2f');
+  const V = (a, b, c) => new THREE.Vector3(a, b, c);
+  const rod = (list, a, b, radius, base, color) => {
+    const start = a.clone().applyMatrix4(base), end = b.clone().applyMatrix4(base);
+    const direction = end.clone().sub(start), length = direction.length();
+    list.push({ geometry: bar, color, matrix: new THREE.Matrix4().compose(start.clone().add(end).multiplyScalar(.5), new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize()), new THREE.Vector3(radius, length, radius)) });
+  };
+  const bicycle = (x, z, angle, lean) => {
+    const base = matrixOf([x, .06, z], angle, [1.25, 1.25, 1.25], lean, 0);
+    const frame = frameTones[Math.floor(random() * frameTones.length)];
+    [-.34, .34].forEach(offset => bikes.push({ geometry: wheel, color: tyre, matrix: base.clone().multiply(matrixOf([offset, .28, 0])) }));
+    rod(bikes, V(-.34, .28, 0), V(0, .62, 0), .028, base, frame); rod(bikes, V(0, .62, 0), V(.34, .28, 0), .028, base, frame);
+    rod(bikes, V(-.34, .28, 0), V(.34, .28, 0), .026, base, frame);
+    rod(bikes, V(.28, .5, 0), V(.34, .82, 0), .026, base, tyre);
+  };
+  const tree = (x, z, scale = 1) => {
+    const height = (2.7 + random() * .7) * scale;
+    trunk.push({ geometry: new THREE.CylinderGeometry(.06 * scale, .095 * scale, height, 5), matrix: matrixOf([x, .65 + height / 2, z]) });
+    // A young tree: a few small leaf clusters, loosely spread, never a solid ball.
+    const greens = ['#5d9440', '#6aa047', '#4c8438', '#7aae55'];
+    for (let i = 0; i < 12; i++) {
+      const a = random() * Math.PI * 2, r = (.3 + random() * 1.05) * scale, h = (.4 + random() * 1.25) * scale, s = (.3 + random() * .3) * scale;
+      crown.push({ geometry: blob, matrix: matrixOf([x + Math.cos(a) * r, .65 + height * .78 + h * .55, z + Math.sin(a) * r], random() * 6, [s * 1.35, s * .7, s * 1.35]), color: new THREE.Color(greens[Math.floor(random() * greens.length)]) });
+    }
+  };
+  COURT_SEATS.forEach(([px, py]) => {
+    const x = planX(px), z = planZ(py);
+    planter.push({ geometry: new THREE.CylinderGeometry(.95, 1.0, .48, 20), matrix: matrixOf([x, .24, z]) });
+    soil.push({ geometry: new THREE.CylinderGeometry(.82, .82, .06, 16), matrix: matrixOf([x, .5, z]) });
+    tree(x, z - .05);
+  });
+  BIKE_SPOTS.forEach(([px, py, count]) => {
+    const cx = planX(px), cz = planZ(py);
+    for (let i = 0; i < count; i++) {
+      const a = random() * Math.PI * 2, r = Math.sqrt(random()) * .95;
+      const bx = cx + Math.cos(a) * r * 1.3, bz = cz + Math.sin(a) * r * .8;
+      const lean = (random() - .5) * .35, turn = random() * Math.PI;
+      if (!insidePolygon(offsetRing(.5), bx, bz)) bicycle(bx, bz, turn, lean);
+    }
+  });
+  return { planter: bake(planter), soil: bake(soil), trunk: bake(trunk), crown: bake(crown, true), bikes: bake(bikes, true) };
+})();
+materials.bike = new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .55, metalness: .25 });
+
+/* Roof kit: solar arrays at the pod centres, two round water drums and the stair
+   heads (IITH says photovoltaics are fitted on the roofs; the satellite view shows
+   the arrays and drums). Positions are representative, not surveyed. */
+const roofKit = (() => {
+  const parts = [], panel = new THREE.Color('#1c3354'), frame = new THREE.Color('#d9d7d2'), drum = new THREE.Color('#cfcac0'), lid = new THREE.Color('#8f8a82'), head = new THREE.Color('#e4dfd5');
+  POD_CENTRES.forEach(([px, py], pod) => {
+    const cx = planX(px), cz = planZ(py), deck = roofLevel + .62;
+    for (let row = 0; row < 4; row++) for (let col = 0; col < 2; col++) {
+      parts.push({ geometry: UNIT_BOX, color: panel, matrix: matrixOf([cx - .62 + col * 1.24, deck + .32, cz - 1.15 + row * .78 - .1], 0, [1.14, .05, .72], -.28) });
+      parts.push({ geometry: UNIT_BOX, color: frame, matrix: matrixOf([cx - .62 + col * 1.24, deck + .15, cz - 1.15 + row * .78 - .1], 0, [.06, .3, .06]) });
+    }
+    parts.push({ geometry: UNIT_BOX, color: head, matrix: matrixOf([cx + 2.0, deck + .5, cz + .5], 0, [1.2, 1.0, 1.0]) });
+    if (pod % 2 === 0) {
+      parts.push({ geometry: new THREE.CylinderGeometry(.72, .72, .8, 14), color: drum, matrix: matrixOf([cx - 2.0, deck + .4, cz + .9]) });
+      parts.push({ geometry: new THREE.CylinderGeometry(.74, .74, .06, 14), color: lid, matrix: matrixOf([cx - 2.0, deck + .83, cz + .9]) });
+    }
+  });
+  return bake(parts, true);
+})();
+materials.roofKit = new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .6, metalness: .1 });
+
+/* — this block — */
+mesh(groundVolume, [materials.ground, materials.ground], groundGroup, { y: .16 });
+mesh(groundDetail, materials.frameDetail, groundGroup, { y: .16, cast: false });
 {
+  const columns = new THREE.InstancedMesh(columnGeometry, materials.column, columnMatrices.length);
+  columnMatrices.forEach((m, i) => columns.setMatrixAt(i, m));
+  columns.castShadow = true; columns.receiveShadow = true;
+  groundGroup.add(columns);
+}
+mesh(furniture.planter, materials.planter, groundGroup);
+mesh(furniture.soil, materials.soil, groundGroup, { cast: false });
+mesh(furniture.trunk, materials.trunk, groundGroup);
+mesh(furniture.crown, materials.crown, groundGroup);
+mesh(furniture.bikes, materials.bike, groundGroup, { cast: false });
+
+/* Roof: the top slab, a deck, a thick white parapet (as in the photographs), and the kit. */
+mesh(bandGeometry, materials.band, roofGroup, { y: roofLevel - .05 });
+mesh(slabGeometry(shellRing(-wallIn), .22), [materials.deck, materials.deck], roofGroup, { y: roofLevel + .4 });
+const parapetGeometry = slabGeometry(shellRing(.03), .72, shellRing(-.3));
+mesh(parapetGeometry, [materials.band, materials.band], roofGroup, { y: roofLevel + .5 });
+mesh(roofKit, materials.roofKit, roofGroup);
+
+/* — the seven neighbours: same shell, a textured facade instead of 6,000 fins — */
+const ctxWalls = (() => {
+  const geometry = slabGeometry(shellRing(-.02), FLOOR_COUNT * floorHeight);
+  // Rewrite the side-wall UVs: u runs along the facade in world units, v up in floors.
+  const position = geometry.attributes.position, normal = geometry.attributes.normal, uv = geometry.attributes.uv;
+  for (let i = 0; i < position.count; i++) {
+    const alongZ = Math.abs(normal.getX(i)) > Math.abs(normal.getZ(i));
+    uv.setXY(i, (alongZ ? position.getZ(i) : position.getX(i)) / 3.2, position.getY(i) / floorHeight);
+  }
+  const facade = new THREE.MeshStandardMaterial({ map: facadeFloor, roughness: .85 });
+  const instanced = neighbourInstances(geometry, [materials.deck, facade], { y: groundClearance });
+  instanced.userData = { kind: 'wall' };
+  return instanced;
+})();
+neighbourInstances(groundVolume, [materials.ground, materials.ground], { y: .16 });
+{
+  const columns = new THREE.InstancedMesh(columnGeometry, materials.column, columnMatrices.length * NEIGHBOURS.length);
+  const m = new THREE.Matrix4();
+  NEIGHBOURS.forEach((t, b) => columnMatrices.forEach((local, i) => columns.setMatrixAt(b * columnMatrices.length + i, m.copy(matrixOf([t.x, 0, t.z], t.yaw)).multiply(local))));
+  columns.castShadow = true; columns.receiveShadow = true; columns.computeBoundingSphere();
+  context.add(columns);
+}
+neighbourInstances(bandGeometry, materials.band, { y: roofLevel - .05 });
+neighbourInstances(slabGeometry(shellRing(-wallIn), .22), [materials.deck, materials.deck], { y: roofLevel + .4 });
+neighbourInstances(parapetGeometry, [materials.band, materials.band], { y: roofLevel + .5 });
+neighbourInstances(roofKit, materials.roofKit);
+neighbourInstances(furniture.planter, materials.planter);
+neighbourInstances(furniture.soil, materials.soil, { cast: false });
+neighbourInstances(furniture.trunk, materials.trunk);
+neighbourInstances(furniture.crown, materials.crown);
+neighbourInstances(furniture.bikes, materials.bike, { cast: false });
+
+/* ── The site: paving, ring road, dry earth, street lamps, scrub ──────────── */
+
+const clusterX = [0, ...NEIGHBOURS.map(t => t.x)], clusterZ = [0, ...NEIGHBOURS.map(t => t.z)];
+const PLAZA = { x0: Math.min(...clusterX) - 30, x1: Math.max(...clusterX) + 30, z0: Math.min(...clusterZ) - 26, z1: Math.max(...clusterZ) + 26 };   // the cluster plus its ring road
+{
+  // A rounded rectangle laid flat, textured in world units (tile = metres/2 per repeat).
+  const rounded = (x0, z0, x1, z1, radius, y, material, tile) => {
+    const shape = new THREE.Shape();
+    shape.moveTo(x0 + radius, -z0);
+    shape.lineTo(x1 - radius, -z0); shape.quadraticCurveTo(x1, -z0, x1, -z0 - radius);
+    shape.lineTo(x1, -z1 + radius); shape.quadraticCurveTo(x1, -z1, x1 - radius, -z1);
+    shape.lineTo(x0 + radius, -z1); shape.quadraticCurveTo(x0, -z1, x0, -z1 + radius);
+    shape.lineTo(x0, -z0 - radius); shape.quadraticCurveTo(x0, -z0, x0 + radius, -z0);
+    const item = new THREE.Mesh(new THREE.ShapeGeometry(shape, 10).rotateX(-Math.PI / 2), material);
+    material.map.repeat.set(1 / tile, 1 / tile);
+    item.position.y = y; item.receiveShadow = true;
+    site.add(item);
+    return item;
+  };
+  // Dry earth under everything, fading into the horizon.
   const fade = document.createElement('canvas');
   fade.width = fade.height = 256;
   const ctx = fade.getContext('2d');
   const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  gradient.addColorStop(0, '#fff'); gradient.addColorStop(.55, '#fff'); gradient.addColorStop(1, '#000');
+  gradient.addColorStop(0, '#fff'); gradient.addColorStop(.62, '#fff'); gradient.addColorStop(1, '#000');
   ctx.fillStyle = gradient; ctx.fillRect(0, 0, 256, 256);
-  materials.lawn.alphaMap = new THREE.CanvasTexture(fade);
-  const lawn = mesh(new THREE.CircleGeometry(95, 72).rotateX(-Math.PI / 2), materials.lawn, groundGroup, { cast: false });
-  lawn.renderOrder = -1;
+  materials.earth.alphaMap = new THREE.CanvasTexture(fade);
+  materials.earth.map.repeat.set(26, 26);
+  const earth = new THREE.Mesh(new THREE.CircleGeometry(190, 72).rotateX(-Math.PI / 2), materials.earth);
+  earth.position.set((PLAZA.x0 + PLAZA.x1) / 2, -.04, (PLAZA.z0 + PLAZA.z1) / 2); earth.receiveShadow = true;
+  site.add(earth);
+
+  // Ring road: a darker band; the brick plaza sits inside it; stone slabs around this block.
+  rounded(PLAZA.x0 - 7, PLAZA.z0 - 7, PLAZA.x1 + 7, PLAZA.z1 + 7, 22, .0, materials.road, 3.2);
+  rounded(PLAZA.x0, PLAZA.z0, PLAZA.x1, PLAZA.z1, 16, .03, materials.brick, 3.2);
+  rounded(-24, -17, 24, 17, 8, .06, materials.stone, 3.2);
 }
-const pathCurve = new THREE.CatmullRomCurve3([[-50, 0, 19], [-28, 0, 16.5], [-10, 0, 19.5], [9, 0, 16], [30, 0, 18.5], [50, 0, 16]].map(p => new THREE.Vector3(...p)));
-{
-  const samples = 140, half = .85, position = [], normal = [], index = [];
-  for (let i = 0; i <= samples; i++) {
-    const t = i / samples, p = pathCurve.getPointAt(t), tangent = pathCurve.getTangentAt(t);
-    const side = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-    position.push(p.x + side.x * half, .05, p.z + side.z * half, p.x - side.x * half, .05, p.z - side.z * half);
-    normal.push(0, 1, 0, 0, 1, 0);
-    if (i < samples) index.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
+materials.stone.polygonOffset = true; materials.stone.polygonOffsetFactor = -2;
+materials.brick.polygonOffset = true; materials.brick.polygonOffsetFactor = -1;
+
+// Street lamps on a coarse grid, wherever no block stands.
+const lampSpots = (() => {
+  const spots = [];
+  // A block is about 28 x 15 units: keep lamps out of a circle around each centre.
+  const blocked = (x, z) => [{ x: 0, z: 0 }, ...NEIGHBOURS].some(t => Math.hypot(x - t.x, z - t.z) < 16);
+  for (let x = PLAZA.x0 + 6; x < PLAZA.x1; x += 15) for (let z = PLAZA.z0 + 6; z < PLAZA.z1; z += 15) {
+    const jx = x + Math.sin(x * 3.1 + z) * 2.2, jz = z + Math.cos(z * 2.3 + x) * 2.2;
+    if (!blocked(jx, jz)) spots.push([jx, jz]);
   }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normal, 3));
-  geometry.setIndex(index);
-  mesh(geometry, materials.path, groundGroup, { cast: false });
-
-  // Bollards every ~4 m along the walk's north edge.
-  const spots = [];
-  for (let t = .08; t <= .92; t += .036) spots.push(t);   // the walk ends inside the opaque part of the lawn
-  const posts = new THREE.InstancedMesh(new THREE.CylinderGeometry(.07, .08, .62, 8), materials.metal, spots.length);
-  const caps = new THREE.InstancedMesh(new THREE.CylinderGeometry(.075, .075, .1, 8), materials.lamp, spots.length);
-  spots.forEach((t, i) => {
-    const p = pathCurve.getPointAt(t), tangent = pathCurve.getTangentAt(t);
-    const x = p.x + tangent.z * 1.25, z = p.z - tangent.x * 1.25;
-    posts.setMatrixAt(i, matrixOf([x, .31, z]));
-    caps.setMatrixAt(i, matrixOf([x, .55, z]));
-  });
-  posts.castShadow = true;
-  groundGroup.add(posts, caps);
-}
-
-// Trees, instanced: trunk plus a three-blob crown of low-poly foliage.
+  return spots.slice(0, 18);
+})();
 {
-  const random = seeded(23);
-  const candidates = [[-30, 7], [-27, -6], [-22, -15], [-31, -18], [27, -9], [31, 6], [33, 17], [-9, -16.5], [6, -17], [17, -18],
-    [-36, 1], [37, -2], [-18, 13.5], [-26, 23], [44, 12], [-44, -10], [-14, -24], [9, -26], [30, -22], [-40, 14], [40, -14]];
-  const outer = offsetRing(3.2);
-  const spots = candidates.filter(([x, z]) => !insidePolygon(outer, x, z));
-  const crownGeometry = (() => {
-    const blob = new THREE.IcosahedronGeometry(1, 1);
-    return bake([[0, 0, 0, 1], [.55, -.25, .3, .72], [-.5, -.18, -.35, .78], [.1, .35, -.2, .66]].map(([x, y, z, s]) => ({ geometry: blob, matrix: matrixOf([x, y, z], 0, [s, s * .9, s]) })));
-  })();
-  const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(.11, .17, 1, 7), materials.trunk, spots.length);
-  const crowns = new THREE.InstancedMesh(crownGeometry, materials.crown, spots.length);
-  const greens = ['#4f6b45', '#5c7a4c', '#46613f', '#6a8450'].map(hex => new THREE.Color(hex));
-  spots.forEach(([x, z], i) => {
-    const scale = 1.25 + random() * .9, trunk = 1.8 + random() * 1.2;
-    trunks.setMatrixAt(i, matrixOf([x, trunk / 2, z], 0, [1, trunk, 1]));
-    crowns.setMatrixAt(i, matrixOf([x, trunk + scale * .7, z], random() * Math.PI * 2, [scale, scale, scale]));
-    crowns.setColorAt(i, greens[i % greens.length]);
+  const n = lampSpots.length;
+  const poles = new THREE.InstancedMesh(new THREE.CylinderGeometry(.04, .06, 4.2, 6), materials.metal, n);
+  const arms = new THREE.InstancedMesh(new THREE.CylinderGeometry(.03, .03, .9, 5).rotateZ(Math.PI / 2), materials.metal, n);
+  const heads = new THREE.InstancedMesh(new THREE.BoxGeometry(.46, .07, .2), materials.lamp, n);
+  const pools = new THREE.InstancedMesh(new THREE.CircleGeometry(4.2, 20).rotateX(-Math.PI / 2), materials.lampPool, n);
+  lampSpots.forEach(([x, z], i) => {
+    const yaw = Math.sin(i * 7.7) * Math.PI;
+    poles.setMatrixAt(i, matrixOf([x, 2.1, z]));
+    arms.setMatrixAt(i, matrixOf([x + Math.cos(yaw) * .45, 4.15, z - Math.sin(yaw) * .45], yaw));
+    heads.setMatrixAt(i, matrixOf([x + Math.cos(yaw) * .85, 4.1, z - Math.sin(yaw) * .85], yaw));
+    pools.setMatrixAt(i, matrixOf([x + Math.cos(yaw) * .85, .075, z - Math.sin(yaw) * .85]));
   });
-  trunks.castShadow = crowns.castShadow = true;
-  crowns.receiveShadow = true;
-  groundGroup.add(trunks, crowns);
+  poles.castShadow = true;
+  [poles, arms, heads, pools].forEach(item => { item.computeBoundingSphere(); site.add(item); });
+  pools.renderOrder = 3;
 }
 
-// Bicycle courts and planter seats in the concave courts, baked to two draw calls.
+// Dry scrub and a few larger trees outside the ring road, as in the satellite view.
 {
-  const metal = [], planter = [], soil = [];
-  const wheel = new THREE.TorusGeometry(.28, .03, 4, 12), bar = new THREE.CylinderGeometry(1, 1, 1, 5, 1, true);
-  const rod = (list, a, b, radius, base) => {
-    const start = a.clone().applyMatrix4(base), end = b.clone().applyMatrix4(base);
-    const direction = end.clone().sub(start), length = direction.length();
-    const matrix = new THREE.Matrix4().compose(start.clone().add(end).multiplyScalar(.5), new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize()), new THREE.Vector3(radius, length, radius));
-    list.push({ geometry: bar, matrix });
-  };
-  const bicycle = (x, z, angle, y) => {
-    const base = matrixOf([x, y, z], angle);
-    [-.35, .35].forEach(offset => metal.push({ geometry: wheel, matrix: base.clone().multiply(matrixOf([offset, .28, 0])) }));
-    const V = (a, b, c) => new THREE.Vector3(a, b, c);
-    rod(metal, V(-.35, .28, 0), V(0, .64, 0), .03, base); rod(metal, V(0, .64, 0), V(.35, .28, 0), .03, base);
-    rod(metal, V(-.35, .28, 0), V(.35, .28, 0), .03, base); rod(metal, V(0, .64, 0), V(.1, .85, 0), .03, base);
-    rod(metal, V(-.33, .85, 0), V(.02, .85, 0), .026, base);
-  };
-  const court = (px, py, angle) => {
-    const x = planX(px), z = planZ(py);
-    planter.push({ geometry: UNIT_BOX, matrix: matrixOf([x, .24, z], 0, [4.2, .16, 1.9]) });
-    const base = new THREE.Matrix4();
-    const V = (a, b, c) => new THREE.Vector3(a, b, c);
-    rod(metal, V(x - 1.9, .32, z - .75), V(x - 1.9, .95, z - .75), .026, base);
-    rod(metal, V(x - 1.9, .95, z - .75), V(x + 1.9, .95, z - .75), .026, base);
-    rod(metal, V(x + 1.9, .95, z - .75), V(x + 1.9, .32, z - .75), .026, base);
-    for (let i = 0; i < 7; i++) bicycle(x - 1.6 + i * .54, z + .2 + (i % 2) * .42, angle, .32);
-  };
-  const seat = (px, py) => {
-    const x = planX(px), z = planZ(py);
-    planter.push({ geometry: new THREE.CylinderGeometry(1.05, 1.05, .46, 24), matrix: matrixOf([x, .39, z]) });
-    soil.push({ geometry: new THREE.CylinderGeometry(.92, .92, .08, 20), matrix: matrixOf([x, .64, z]) });
-  };
-  court(980, 720, .12); court(1140, 720, -.1); court(640, 300, .1); court(800, 300, -.12); court(560, 990, 0); court(1300, 990, 0);
-  [[1058, 640], [720, 400], [300, 640], [1620, 360]].forEach(([x, y]) => seat(x, y));
-  mesh(bake(metal), materials.metal, groundGroup, { cast: false });
-  mesh(bake(planter), materials.planter, groundGroup);
-  mesh(bake(soil), materials.soil, groundGroup, { cast: false });
-}
-
-/* Roof: the last ribbon, a deck, stair and lift heads on the four pod
-   centres, and the floating canopy on slim posts with its lit soffit. */
-mesh(bandGeometry, materials.band, roofGroup, { y: roofLevel - .05 });
-mesh(slabGeometry(shellRing(-wallIn), .3), [materials.deck, materials.deck], roofGroup, { y: roofLevel + .38 });
-mesh(slabGeometry(shellRing(.02), .34, shellRing(-.3)), [materials.band, materials.band], roofGroup, { y: roofLevel + .42 });
-[[346.5, 337.5], [702, 692.5], [1058, 337.5], [1414.5, 692.5]].forEach(([x, y]) => {
-  const head = mesh(new THREE.BoxGeometry(2.4, 1.1, 2.0), materials.canopy, roofGroup, { y: roofLevel + 1.22 });
-  head.position.x = planX(x); head.position.z = planZ(y);
-});
-{
-  const outer = shellRing(.42), inner = shellRing(-.85);
-  mesh(slabGeometry(outer, .24, inner), [materials.canopy, materials.canopy], roofGroup, { y: canopyY });
-  mesh(ringFlat(outer, inner), materials.soffit, roofGroup, { y: canopyY - .004, cast: false });
-  const spots = [];
-  for (let index = 3; index < RING; index += 11) spots.push(index);
-  const height = canopyY - (roofLevel + .76);
-  const posts = new THREE.InstancedMesh(new THREE.CylinderGeometry(.055, .055, height, 8), materials.column, spots.length);
-  spots.forEach((index, i) => {
-    const p = ring[index], n = normals[index];
-    posts.setMatrixAt(i, matrixOf([p.x - n.x * .2, roofLevel + .76 + height / 2, p.y - n.y * .2]));
+  const random = seeded(77);
+  const bushes = [], trees = [];
+  for (let i = 0; i < 260; i++) {
+    const a = random() * Math.PI * 2, r = 62 + Math.pow(random(), .8) * 100;
+    const x = (PLAZA.x0 + PLAZA.x1) / 2 + Math.cos(a) * r * 1.15, z = (PLAZA.z0 + PLAZA.z1) / 2 + Math.sin(a) * r * .95;
+    if (x > PLAZA.x0 - 6 && x < PLAZA.x1 + 6 && z > PLAZA.z0 - 6 && z < PLAZA.z1 + 6) continue;
+    (random() < .22 ? trees : bushes).push([x, z, .7 + random() * 1.1]);
+  }
+  const blobGeometry = new THREE.IcosahedronGeometry(1, 1);
+  const shades = ['#4b5a37', '#56653c', '#3f4f30', '#6b6a42', '#5f6d3d'].map(hex => new THREE.Color(hex));
+  const scrub = new THREE.InstancedMesh(blobGeometry, materials.foliage, bushes.length);
+  bushes.forEach(([x, z, s], i) => { scrub.setMatrixAt(i, matrixOf([x, s * .45, z], random() * 6, [s * 1.5, s * .8, s * 1.5])); scrub.setColorAt(i, shades[i % shades.length]); });
+  scrub.receiveShadow = true; scrub.computeBoundingSphere();
+  const canopy = new THREE.InstancedMesh(blobGeometry, materials.foliage, trees.length * 3);
+  const stems = new THREE.InstancedMesh(new THREE.CylinderGeometry(.1, .16, 1, 5), materials.trunk, trees.length);
+  trees.forEach(([x, z, s], i) => {
+    const h = 2.4 + s * 1.6;
+    stems.setMatrixAt(i, matrixOf([x, h / 2, z], 0, [1, h, 1]));
+    for (let k = 0; k < 3; k++) {
+      const q = s * (1.2 - k * .2);
+      canopy.setMatrixAt(i * 3 + k, matrixOf([x + (k - 1) * .5 * s, h + .3 + k * .35, z + (k % 2 ? .4 : -.4) * s], random() * 6, [q * 1.3, q * .85, q * 1.3]));
+      canopy.setColorAt(i * 3 + k, shades[(i + k) % shades.length]);
+    }
   });
-  posts.castShadow = true;
-  roofGroup.add(posts);
+  canopy.castShadow = true; canopy.receiveShadow = true; canopy.computeBoundingSphere();
+  stems.computeBoundingSphere();
+  site.add(scrub, canopy, stems);
 }
 
-/* Building identity. A sprite above the canopy turns to face the camera, so
+/* Building identity. A sprite above the roof turns to face the camera, so
    the name is legible and complete from every orbit position. */
 const nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, depthTest: false }));
-nameSprite.renderOrder = 10;   // a label: never hidden behind the canopy
-nameSprite.position.set(0, canopyY + 2.9, 0);
-nameSprite.scale.set(7.2, 1.41, 1);
+nameSprite.renderOrder = 10;   // a label: never hidden behind the parapet
+nameSprite.position.set(0, roofLevel + 3.6, 0);
+nameSprite.scale.set(6.2, 1.21, 1);
 roofGroup.add(nameSprite);
 
 function makeNameTexture(name) {
@@ -732,17 +937,16 @@ function paintLabel(sprite, text, { pill = null, ink = '#fff5ec', font = LABEL_F
 const labelGroup = new THREE.Group();
 labelGroup.visible = false;
 const roomLabels = roomCentroids.map(centre => {
-  const sprite = labelSprite(192, 84, [1.75, .77]);
-  sprite.position.set(centre.x, .55, centre.y);
+  const sprite = labelSprite(192, 84, [1.25, .55]);
+  sprite.position.set(centre.x, .4, centre.y);
   sprite.renderOrder = 4;
   labelGroup.add(sprite);
   return sprite;
 });
-const POD_CENTRES = [[346.5, 337.5], [702, 692.5], [1058, 337.5], [1414.5, 692.5]];
 const POD_LABEL = { pill: '#f05a25', ink: '#ffffff', font: '600 38px "DM Mono", ui-monospace, Menlo, monospace' };
 const podLabels = POD_CENTRES.map(([x, y], index) => {
-  const sprite = labelSprite(256, 84, [2.7, .88]);
-  sprite.position.set(planX(x), 1.0, planZ(y));
+  const sprite = labelSprite(256, 84, [1.9, .62]);
+  sprite.position.set(planX(x), .75, planZ(y));
   sprite.renderOrder = 5;
   paintLabel(sprite, `POD ${index + 1}`, POD_LABEL);
   labelGroup.add(sprite);
@@ -767,7 +971,7 @@ const pin = new THREE.Group();
   halo.position.y = .02;
   pin.add(cone, ball, halo);
   pin.userData.halo = halo;
-  pin.scale.setScalar(1.6);
+  pin.scale.setScalar(1.15);
   pin.visible = false;
 }
 
@@ -853,7 +1057,7 @@ function placePin() {
     pin.userData.halo.visible = true;
   } else {
     const w = windowFrames[selected.room];
-    pin.position.set(w.x + w.nx * 1.0, WIN_BOTTOM + WIN_HEIGHT + .35, w.z + w.nz * 1.0);
+    pin.position.set(w.x + w.nx * .7, WIN_BOTTOM + WIN_HEIGHT + .3, w.z + w.nz * .7);
     pin.userData.halo.visible = false;
   }
   pin.userData.baseY = pin.position.y;
@@ -874,6 +1078,24 @@ function focusRoom(id) {
 
 let openFloor = null;      // index, or null for all floors
 let stacked = false;
+
+/* The neighbouring blocks are context. They sink away (and stop casting shadows)
+   when you open a floor or spread the stack, and the Surroundings button switches
+   them off for good, so nothing ever stands between you and a room. */
+let contextWanted = true, contextT = 1;
+const contextShown = () => contextWanted && openFloor === null && !stacked;
+function stepContext(dt) {
+  const target = contextShown() ? 1 : 0;
+  if (Math.abs(contextT - target) < .004) {
+    if (contextT !== target) { contextT = target; context.scale.y = Math.max(.001, contextT); context.visible = contextT > 0; shadowDirty = true; }
+    return false;
+  }
+  contextT += (target - contextT) * Math.min(1, dt * 9);
+  context.scale.y = Math.max(.001, contextT);
+  context.visible = true;
+  shadowDirty = true;
+  return true;
+}
 
 // Springs on each floor's height and the roof's. Staggered so the stack lifts
 // one floor after another, the way a model comes apart in a hand.
@@ -924,21 +1146,22 @@ function stepSprings(dt, now) {
 
 /* ── Camera ──────────────────────────────────────────────────────────────── */
 
-const AZIMUTH = Math.atan2(29, 39);
+const AZIMUTH = .16;   // from the open south side, looking up the corridor between the blocks either side (as in the Bhabha photograph)
 let cameraTween = null;
 function fitDistance() {
+  // The block is about 28 x 15 units wide and 20 tall: fit its height, widen for portrait screens.
   const aspect = camera.aspect || 1.5;
-  return Math.min(118, Math.max(56, 74 / Math.pow(Math.min(aspect, 1.9), .55)));
+  return Math.min(120, Math.max(52, 36 / (.611 * Math.min(aspect, 1.9))));
 }
 function pose(kind) {
   const distance = fitDistance();
-  if (kind === 'intro') return { target: new THREE.Vector3(0, 9, 0), radius: distance * 1.35, phi: Math.PI * .34, theta: AZIMUTH - .95 };
-  if (stacked && openFloor === null) return { target: new THREE.Vector3(0, 10 + FLOOR_COUNT * STACK_GAP / 2, 0), radius: distance * 1.42, phi: Math.PI * .40, theta: null };
+  if (kind === 'intro') return { target: new THREE.Vector3(0, 9, 0), radius: distance * 1.25, phi: Math.PI * .34, theta: AZIMUTH - .95 };
+  if (stacked && openFloor === null) return { target: new THREE.Vector3(0, 10 + FLOOR_COUNT * STACK_GAP / 2, 0), radius: distance * 1.3, phi: Math.PI * .40, theta: null };
   if (openFloor !== null) {
     const top = groundClearance + (openFloor + 1) * floorHeight + (stacked ? openFloor * STACK_GAP : 0);
-    return { target: new THREE.Vector3(0, top * .8, 0), radius: distance * .92, phi: Math.PI * .27, theta: null };
+    return { target: new THREE.Vector3(0, top * .8, 0), radius: distance * .78, phi: Math.PI * .27, theta: null };
   }
-  return { target: new THREE.Vector3(0, 9.0, 0), radius: distance * 1.08, phi: Math.PI * .41, theta: AZIMUTH };
+  return { target: new THREE.Vector3(0, 9.0, 0), radius: distance, phi: Math.PI * .385, theta: AZIMUTH };
 }
 function currentSpherical() {
   return new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
@@ -971,8 +1194,8 @@ function setPose(next) {
 controls.addEventListener('start', () => { cameraTween = null; });
 // Keep panning within the site so the building can't be lost off-screen.
 controls.addEventListener('change', () => {
-  controls.target.x = THREE.MathUtils.clamp(controls.target.x, -30, 30);
-  controls.target.z = THREE.MathUtils.clamp(controls.target.z, -24, 24);
+  controls.target.x = THREE.MathUtils.clamp(controls.target.x, -60, 50);
+  controls.target.z = THREE.MathUtils.clamp(controls.target.z, -50, 40);
   controls.target.y = THREE.MathUtils.clamp(controls.target.y, 0, 34);
   invalidate();
 });
@@ -981,12 +1204,12 @@ controls.addEventListener('change', () => {
 
 const C = hex => new THREE.Color(hex), V = (x, y, z) => new THREE.Vector3(x, y, z);
 const MOODS = {
-  day: { exposure: 1.0, sky: C('#e6eef6'), ground: C('#6b5a4c'), hemi: 1.9, sun: C('#fff3e2'), sunI: 3.2, sunPos: V(30, 50, 26), fill: C('#a9c1de'), fillI: .55, fillPos: V(-28, 14, -20),
-    fog: C('#dfe7ee'), unlisted: 0, listed: .32, soffit: 0, deck: 0, pilotis: 0, lamp: C('#7d7368'), lawn: C('#7b9a5c') },
-  dusk: { exposure: 1.05, sky: C('#f6c9ab'), ground: C('#3c2b2c'), hemi: 1.35, sun: C('#ffad73'), sunI: 2.4, sunPos: V(-42, 20, 30), fill: C('#8c78c4'), fillI: .7, fillPos: V(30, 16, -24),
-    fog: C('#c9a6a6'), unlisted: .16, listed: .75, soffit: 1.25, deck: .25, pilotis: .32, lamp: C('#ffd59a'), lawn: C('#5b7449') },
-  night: { exposure: 1.12, sky: C('#43568c'), ground: C('#141019'), hemi: 1.0, sun: C('#a8bbff'), sunI: .75, sunPos: V(-24, 52, -22), fill: C('#ff9b5c'), fillI: .35, fillPos: V(20, 6, 30),
-    fog: C('#232842'), unlisted: .3, listed: 1.15, soffit: 2.4, deck: .55, pilotis: .62, lamp: C('#ffe2b0'), lawn: C('#4b6347') },
+  day: { exposure: 1.0, sky: C('#e6eef6'), ground: C('#7a6a55'), hemi: 1.9, sun: C('#fff3e2'), sunI: 3.2, sunPos: V(30, 50, 26), fill: C('#a9c1de'), fillI: .55, fillPos: V(-28, 14, -20),
+    fog: C('#dfe7ee'), unlisted: 0, listed: .32, pilotis: 0, lamp: C('#7d7368'), lampGlow: 0 },
+  dusk: { exposure: 1.05, sky: C('#f6c9ab'), ground: C('#4a3732'), hemi: 1.35, sun: C('#ffad73'), sunI: 2.4, sunPos: V(-42, 20, 30), fill: C('#8c78c4'), fillI: .7, fillPos: V(30, 16, -24),
+    fog: C('#c9a6a6'), unlisted: .16, listed: .75, pilotis: .3, lamp: C('#ffd59a'), lampGlow: .5 },
+  night: { exposure: 1.12, sky: C('#43568c'), ground: C('#1d1a24'), hemi: 1.05, sun: C('#a8bbff'), sunI: .8, sunPos: V(-24, 52, -22), fill: C('#ff9b5c'), fillI: .35, fillPos: V(20, 6, 30),
+    fog: C('#232842'), unlisted: .3, listed: 1.15, pilotis: .55, lamp: C('#ffe2b0'), lampGlow: 1 },
 };
 const live = structuredCloneMood(MOODS.dusk);
 function structuredCloneMood(mood) {
@@ -1001,11 +1224,9 @@ function applyMood() {
   fill.color.copy(live.fill); fill.intensity = live.fillI; fill.position.copy(live.fillPos);
   scene.fog.color.copy(live.fog);
   glow.unlisted.value = live.unlisted; glow.listed.value = live.listed;
-  materials.soffit.emissiveIntensity = live.soffit;
-  materials.deck.emissiveIntensity = live.deck;
   materials.ground.emissiveIntensity = live.pilotis;
   materials.lamp.color.copy(live.lamp);
-  materials.lawn.color.copy(live.lawn);
+  materials.lampPool.opacity = live.lampGlow * .55;
 }
 function setMood(name, animate = true) {
   if (!MOODS[name]) return;
@@ -1058,6 +1279,7 @@ function frame(now) {
   if (stepCamera(now)) active = true;
   if (stepSprings(dt, now)) { active = true; shadowDirty = true; }
   if (stepMood(now)) active = true;
+  if (stepContext(dt)) active = true;
   if (pin.visible) {
     const age = (now - pin.userData.since) / 1000;
     if (age < 4 && !reduceMotion.matches) {
@@ -1121,6 +1343,7 @@ function pick(event) {
     targets.push(level.glass, level.wall);
     if (level.tiles && visibleChain(level.tiles)) targets.push(level.tiles);
   });
+  if (visibleChain(ctxWalls)) targets.push(ctxWalls);
   for (const hit of raycaster.intersectObjects(targets, false)) {
     const { kind, floor } = hit.object.userData;
     if (kind === 'wall') return null;
@@ -1196,6 +1419,12 @@ function setStack(value) {
   flyTo(pose());
   idleReadout();
 }
+function setContext(value) {
+  contextWanted = Boolean(value);
+  document.querySelectorAll('[data-context-toggle]').forEach(button => button.setAttribute('aria-pressed', String(contextWanted)));
+  try { localStorage.setItem('nivas-context', contextWanted ? 'on' : 'off'); } catch {}
+  invalidate();
+}
 function resetView() { flyTo(pose()); }
 function zoomIn() { flyTo({ ...poseFromCurrent(), radius: Math.max(controls.minDistance, currentSpherical().radius * .82) }, 500); }
 function zoomOut() { flyTo({ ...poseFromCurrent(), radius: Math.min(controls.maxDistance, currentSpherical().radius * 1.22) }, 500); }
@@ -1203,6 +1432,8 @@ function poseFromCurrent() { const s = currentSpherical(); return { target: cont
 
 document.querySelectorAll('[data-mood-choice]').forEach(button => button.addEventListener('click', () => setMood(button.dataset.moodChoice)));
 document.querySelectorAll('[data-stack-toggle]').forEach(button => button.addEventListener('click', () => setStack(!stacked)));
+document.querySelectorAll('[data-context-toggle]').forEach(button => button.addEventListener('click', () => setContext(!contextWanted)));
+try { if (localStorage.getItem('nivas-context') === 'off') setContext(false); } catch {}
 document.getElementById('view-reset')?.addEventListener('click', resetView);
 
 window.addEventListener('nivas:building-change', event => {
@@ -1228,7 +1459,7 @@ if (reduceMotion.matches) setPose(pose());
 else { setPose(pose('intro')); flyTo(pose(), 2400); }
 invalidate();
 window.nivasViewer = {
-  resize, setFloor, setStack, setMood, focusRoom, resetView, zoomIn, zoomOut,
+  resize, setFloor, setStack, setMood, setContext, focusRoom, resetView, zoomIn, zoomOut,
   get mood() { return moodName; },
   get stats() { const { calls, triangles } = renderer.info.render; return { calls, triangles }; },
 };

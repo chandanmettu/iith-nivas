@@ -18,7 +18,7 @@ a separate page.
 
 | Piece | State |
 |---|---|
-| Detailed hostel block (10 floors, 30 rooms, traced from the architect's plan) | Done, v2 on branch `v2` |
+| Detailed hostel block (10 floors, 30 rooms, traced from the architect's plan) | Done, v2 on branch `v2`; the same cluster layout (eight blocks from OSM) is already drawn around it as "Surroundings" |
 | Viewer machinery: moods, springs, picking with occluders, render-on-change, no-WebGL fallback | Done, reusable as is |
 | Per-hostel live counts (`roomStatusMapFor`, `updateSummary`) | Done in `app.js` |
 | A made-up campus layout with hostel positions | In `docs/archive/viewer3d-v1.js` (`cityLayout`). **Placeholder, unverified**; do not reuse the coordinates |
@@ -76,11 +76,13 @@ Measured on 2026-10-13 (full notes, sources and the 15 open gaps in
    OpenStreetMap and the Welcome Booklet put it in the older six-floor group.
    The ten-floor type is the eight new blocks. The header's "10 floors, 30 rooms
    per floor" would then not hold for every hostel.
-3. **Is the model the right size?** At the viewer's scale the traced plan is
-   about 76 x 40 m; OpenStreetMap has the new block type at 52.5 x 27.2 m. The
-   proportions match (about 1.9 to 1), the size differs by about 1.45 times. The
-   plan may cover more than one block, or the scale (5 cm per plan pixel) may be
-   off. Check before placing the detailed model on a campus map.
+3. **Is the model the right size?** Resolved on 2026-10-13: the viewer assumed
+   5 cm per plan pixel and drew the block 76 x 40 m. OpenStreetMap has the block
+   type at 56.1 x 30.1 m in the same frame as the traced plan's 1626 x 899 px, so
+   the scale is 3.4 cm per pixel, and a single room then comes out at about 9 m2
+   instead of 20. The viewer now uses 3.4 cm. The photographs of Kalam and Bhabha
+   confirm the model is the new ten-floor block type. Still unverified against
+   the architect's own drawing scale.
 
 Options, in the order I would try them:
 

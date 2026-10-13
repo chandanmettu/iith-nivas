@@ -200,9 +200,36 @@ each other and with the hostel dropdown. See PROGRESS.md.
 ## 3D viewer (v2, 2026-10-13)
 
 `viewer3d.js` is one hostel block built from the traced plan (`plan-geometry.js`)
-and dressed from the architect's render: white slab ribbons, terracotta louvres
-over deep balconies, glazed room windows, an open pilotis ground floor, and a
-floating roof canopy. v1 is kept whole in `docs/archive/viewer3d-v1.js`.
+and refined against photographs of the real blocks (Kalam, Bhabha, supplied
+2026-10-13) and the satellite view of the cluster. v1 is kept whole in
+`docs/archive/viewer3d-v1.js`. What the photographs fixed:
+
+- **Scale.** One plan pixel is 3.4 cm (v1 guessed 5 cm). Two independent checks:
+  OpenStreetMap has this block type at 56.1 x 30.1 m against 1626 x 899 plan px
+  in the same frame, and a single room comes out at about 9 m2 instead of 20.
+  `PLAN_SCALE` is `.017`; one world unit is still about 2 m.
+- **Facade.** Thick white slab ribbons (`bandHeight` .56), red-orange louvre
+  blades every ~26 cm placed by arc length, room windows as groups of three tall
+  slits between red piers, a deep shaded recess behind the louvres.
+- **Ground floor** is an enclosed cream volume under the cantilevers with dark
+  windows and a few doors, not open pilotis.
+- **Roof** is a plain thick parapet with solar-array blocks, round water drums and
+  stair heads at the pod centres (IITH says photovoltaics are fitted on the roofs;
+  the satellite view shows them). Positions are representative, not surveyed. The
+  floating canopy of the architect's render is gone: the real roofs don't have it.
+- **Surroundings** are paving, not lawn: herringbone brick plaza inside a ring
+  road, grey stone slabs around this block, round planters with a slender young
+  tree, loose clusters of bicycles, street lamps (warm pools of light at dusk and
+  night), dry earth and acacia-like scrub beyond.
+- **Neighbours.** The seven other new blocks stand where OpenStreetMap puts them
+  (`CLUSTER` in the viewer: metres east/north and long-axis angle, from eight
+  footprints; the page credits "(c) OpenStreetMap contributors"). The block on show
+  stands for Kalam, the easternmost, so the cluster sits behind it from the
+  default camera, which looks up the corridor between the blocks either side, as in
+  the Bhabha photograph. Neighbours use a textured facade (no fins), are instanced,
+  and sink away when you open a floor or stack; the **Surroundings** button
+  switches them off for good. They are context only: not selectable, but they do
+  occlude picking.
 
 - **Rooms are windows.** Each floor's 30 panes are one `InstancedMesh`; the
   status colour is the pane's instance colour, and a small shader hook adds a
@@ -219,13 +246,20 @@ floating roof canopy. v1 is kept whole in `docs/archive/viewer3d-v1.js`.
   frames; it also stops when scrolled away or the tab is hidden. If you add an
   animation, drive it from `frame()` and keep `invalidate()` the only way to
   ask for a redraw. Verified: 0 frames in 2 s idle.
-- **The viewer bar** under the model (readout left, mood / stack / reset right)
+- **The header and stats.** The header carries the brand, one line of context and
+  three actions only. All counts live in one strip beside the headline (campus
+  wide first, then this hostel's), not four pills, and not in the header. The
+  header no longer states floor or room counts: the research found the older
+  hostels have six floors, so "10 floors, 30 rooms" was not true of all 15.
+- **The viewer bar** under the model (readout left, mood / stack / surroundings / reset right)
   is a band in the column, not an overlay. The "nothing floats over the
   artifact" rule still holds.
-- **Budget:** about 275k triangles and 148 draw calls per frame with the shadow
-  pass, 111k with one floor opened (`window.nivasViewer.stats`). Fins, frames and
-  sills do not cast shadows and drop the box faces nobody sees. The shell
-  (walls, ribbons, canopy) uses only the outline's corner points.
+- **Budget:** about 340k triangles and 115 draw calls per frame including the
+  shadow pass with the neighbours showing, about 270k without them, about 110k
+  with one floor opened (`window.nivasViewer.stats`). Fins, frames and sills do
+  not cast shadows and drop the box faces nobody sees. The shell (walls, ribbons,
+  parapet) uses only the outline's corner points. Neighbours, furniture and
+  trees are instanced or merged, so seven extra blocks cost a handful of calls.
 - **Hit-testing** includes each floor's solid wall as an occluder, so a click on
   bare facade can't reach through the building to a window behind it.
 - No WebGL: the page switches itself to the floor plan.

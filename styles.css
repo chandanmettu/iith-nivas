@@ -573,14 +573,12 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   display: flex;
   align-items: center;
   gap: var(--s-6);
-  min-height: 92px;
+  min-height: 78px;
   flex: none;
-  padding: var(--s-4) var(--s-4) var(--s-4) var(--s-6);
+  padding: var(--s-3) var(--s-3) var(--s-3) var(--s-6);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
-  background:
-    radial-gradient(120% 180% at 88% 0%, var(--brand-50), transparent 62%),
-    linear-gradient(90deg, var(--surface) 0%, var(--accent-50) 100%);
+  background: linear-gradient(90deg, var(--surface) 0%, var(--surface) 55%, #fff6ef 100%);
   box-shadow: var(--e-1);
 }
 /* The facade's louvre rhythm, barely there, fading in from the right. */
@@ -588,8 +586,8 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   content: '';
   position: absolute;
   inset: 0 0 0 auto;
-  width: 340px;
-  background: repeating-linear-gradient(90deg, rgba(169, 31, 50, .10) 0 3px, transparent 3px 11px);
+  width: 300px;
+  background: repeating-linear-gradient(90deg, rgba(200, 69, 45, .08) 0 3px, transparent 3px 11px);
   -webkit-mask-image: linear-gradient(90deg, transparent, #000);
   mask-image: linear-gradient(90deg, transparent, #000);
   pointer-events: none;
@@ -599,22 +597,6 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .topbar-tag span { font: var(--fs-micro) var(--font-mono); letter-spacing: var(--track-mono); color: var(--brand-600); }
 .topbar-tag small { color: var(--ink-500); font-size: var(--fs-xs); }
 
-/* Campus-wide total, always visible — distinct from .head-stat, which is
-   scoped to whichever hostel is currently selected below. Styled as a live
-   pill (pulsing dot) rather than plain text, so it reads as "updating now",
-   not a static label. */
-.campus-stat {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  padding: var(--s-2) var(--s-4);
-  border: 1px solid var(--status-match);
-  border-radius: var(--r-pill);
-  background: var(--status-match-tint);
-  white-space: nowrap;
-}
-.campus-stat strong { font: 800 var(--fs-lg) var(--font-sans); line-height: 1; letter-spacing: -.02em; color: #246145; }
-.campus-stat small { color: #246145; font-size: var(--fs-xs); font-weight: 600; }
 .live-dot {
   width: 8px;
   height: 8px;
@@ -630,7 +612,7 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   100% { box-shadow: 0 0 0 0 rgba(47, 145, 97, 0); }
 }
 .topbar-actions { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--s-3); margin-left: auto; }
-.topbar-actions .btn { min-height: 44px; padding: 0 var(--s-5); border-radius: var(--r-pill); font-size: var(--fs-sm); }
+.topbar-actions .btn { min-height: 42px; padding: 0 var(--s-5); border-radius: var(--r-pill); font-size: var(--fs-sm); }
 
 .topbar-cta { flex: none; box-shadow: var(--brand-action-shadow); white-space: nowrap; }
 .topbar-cta b { margin-left: var(--s-1); }
@@ -680,11 +662,13 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--s-8);
+  flex-wrap: wrap;
+  gap: var(--s-4) var(--s-8);
   margin: var(--s-8) 0 var(--s-5);
 }
 .page-head-copy h1 {
-  font-size: var(--fs-4xl);
+  font-size: 36px;
+  white-space: nowrap;
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -.02em;
@@ -698,20 +682,26 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 .page-head-copy p { margin: var(--s-2) 0 0; color: var(--ink-500); font-size: var(--fs-sm); }
 .page-head-copy strong { color: var(--ink-800); font-weight: 700; }
 
-/* Counts read as solid chips rather than loose numerals — a status swatch,
-   the figure, then what it counts. */
-.head-stats { display: flex; align-items: center; gap: var(--s-3); flex: none; }
-.head-stat {
+/* The counts are one strip, not four loose pills: campus-wide first, then this
+   hostel's three, with the activity link at the end. */
+.head-stats {
   display: flex;
-  align-items: baseline;
-  gap: var(--s-2);
-  padding: var(--s-3) var(--s-4);
+  align-items: center;
+  flex: none;
+  padding: 5px 6px 5px 2px;
   border: 1px solid var(--line);
   border-radius: var(--r-pill);
   background: var(--surface);
   box-shadow: var(--e-1);
+}
+.head-stat {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
   white-space: nowrap;
 }
+.head-stat + .head-stat { border-left: 1px solid var(--line-soft); }
 .head-stat:before {
   content: '';
   width: 8px;
@@ -721,11 +711,15 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   border-radius: var(--r-pill);
   background: var(--ink-400);
 }
+.head-stat--campus:before { display: none; }
+.head-stat--campus { align-items: center; }
+.head-stat--campus strong, .head-stat--campus small { color: #246145; }
 .head-stat--open:before  { background: var(--status-open); }
 .head-stat--match:before { background: var(--status-match); }
 .head-stat strong { font: 800 var(--fs-xl) var(--font-sans); line-height: 1; letter-spacing: -.02em; color: var(--ink-900); }
 .head-stat small { color: var(--ink-500); font-size: var(--fs-xs); font-weight: 600; }
-.head-activity { min-height: 42px; padding: 0 var(--s-4); border-radius: var(--r-pill); font-size: var(--fs-xs); }
+.head-activity { min-height: 36px; margin-left: var(--s-2); padding: 0 var(--s-4); border-radius: var(--r-pill); font-size: var(--fs-xs); }
+.btn-icon { flex: none; margin-right: 6px; vertical-align: -2px; }
 
 /* One card: toolbar / stage row / key bar, divided by hairlines. It must NOT
    clip its overflow — that's what was cutting off the hostel dropdown. The
@@ -1023,6 +1017,8 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   font-size: var(--fs-micro);
 }
 .footer-heart { color: var(--status-waitlist); }
+
+.privacy-note a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 
 /* ── 08 Views ────────────────────────────────────────────────────────────── */
 
@@ -1622,7 +1618,7 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 
 /* ── 11 Component refinements ───────────────────────────────────────────── */
 
-body { background: var(--canvas); }
+body { background: radial-gradient(900px 360px at 90% -90px, rgba(240, 90, 37, .08), transparent 70%), var(--canvas); background-repeat: no-repeat; }
 .brand small { color: var(--ink-500); }
 .nav-item { color: var(--ink-600); font-size: var(--fs-sm); }
 .nav-item.active { box-shadow: inset 0 0 0 1px var(--brand-100); }
@@ -1671,7 +1667,6 @@ body { background: var(--canvas); }
 @media (max-width: 1280px) {
   :root { --detail-w: 280px; }
   .page { max-width: 100%; }
-  .head-stats { gap: var(--s-2); }
   .head-stat { padding: var(--s-2) var(--s-3); }
   .toolbar { gap: var(--s-3); }
   .key { gap: var(--s-3); }
@@ -1696,8 +1691,7 @@ body { background: var(--canvas); }
   .toolbar { height: auto; flex-wrap: wrap; row-gap: var(--s-3); padding: var(--s-3) var(--s-5); }
   .toolbar .key { margin-left: 0; flex-wrap: wrap; row-gap: var(--s-2); }
   .page-head { align-items: flex-start; flex-direction: column; gap: var(--s-4); }
-  .head-stats { width: 100%; gap: var(--s-8); }
-  .head-stat { text-align: left; }
+  .head-stats { width: 100%; justify-content: space-between; flex-wrap: wrap; }
   .head-activity { margin-left: auto; }
 }
 
@@ -1733,10 +1727,11 @@ body { background: var(--canvas); }
      than the screen now sit in a 2-column grid, full numbers and labels
      intact — nothing shrunk to fit, nothing truncated. */
   .page-head { flex-direction: column; align-items: stretch; gap: var(--s-4); }
-  .page-head-copy h1 { font-size: var(--fs-2xl); }
-  .head-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); width: 100%; }
-  .head-stat { justify-content: center; text-align: center; padding: var(--s-3); }
-  .head-stat--match { grid-column: 1 / -1; }
+  .page-head-copy h1 { font-size: var(--fs-2xl); white-space: normal; }
+  .head-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; padding: 0; overflow: hidden; border-radius: var(--r-lg); }
+  .head-stat { justify-content: center; text-align: center; padding: var(--s-3); border-left: 0 !important; }
+  .head-stat:nth-child(odd) { border-right: 1px solid var(--line-soft); }
+  .head-stat:nth-child(-n+2) { border-bottom: 1px solid var(--line-soft); }
   .head-activity { display: none; }   /* the same numbers are already above it */
 
   /* Explorer toolbar: picker, view switch and key each get their own full-
@@ -1779,7 +1774,7 @@ body { background: var(--canvas); }
   .three-readout { flex: 1 1 100%; }
   .viewer-tools { width: 100%; justify-content: space-between; }
   .tool-btn b { display: none; }
-  .tool-btn { width: 38px; padding: 0; justify-content: center; }
+  .tool-btn { width: 38px; padding: 0; justify-content: center; flex: none; }
 
   .choice-tiles, .choice-tiles--three { grid-template-columns: 1fr; }
   /* The listing/feedback/verify forms use a 6-column .form-grid (span-2 =
@@ -1825,6 +1820,12 @@ body { background: var(--canvas); }
   .field-grid, .friend-directory { grid-template-columns: 1fr; }
   .modal-heading { flex-direction: column; align-items: start; gap: var(--s-1); }
   .request-row { grid-template-columns: auto minmax(0, 1fr); }
+}
+
+/* Six controls in one row on a phone: the lighting buttons go icon-only. */
+@media (max-width: 430px) {
+  .mood-switch button b { display: none; }
+  .mood-switch button { padding: 0 11px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

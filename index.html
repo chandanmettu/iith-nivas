@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
     <!-- Bump ?v= on every CSS/JS change — shared hosting CDNs serve stale assets otherwise. -->
-    <link rel="stylesheet" href="./styles.css?v=45" />
+    <link rel="stylesheet" href="./styles.css?v=49" />
     <!-- The 3D viewer's imports, fetched in parallel with the page instead of
          one after another once viewer3d.js has been parsed. -->
     <link rel="modulepreload" href="./vendor/three-r185/three.module.min.js" />
@@ -46,22 +46,14 @@
               <span>NIVAS<small>IIT HYDERABAD</small></span>
             </a>
 
-            <!-- Campus-wide total, not per-hostel — always visible regardless
-                 of which hostel is selected below. Updated by the same
-                 updateSummary() that drives the per-hostel head-stats. -->
-            <div class="campus-stat" aria-label="Total listings across all hostels" title="Total room listings across every hostel">
-              <i class="live-dot"></i>
-              <strong id="campus-listed-count">0</strong><small>listed campus-wide</small>
-            </div>
-
             <div class="topbar-tag">
               <span>STUDENT ROOM SWAP</span>
-              <small>15 hostels · 10 floors · 30 rooms per floor</small>
+              <small>15 hostels · listings posted by students</small>
             </div>
           </div>
 
           <div class="topbar-actions">
-            <button class="btn btn--ghost" id="open-bookmarks">My Bookmarks <b class="count-badge" id="bookmark-badge">0</b></button>
+            <button class="btn btn--ghost" id="open-bookmarks"><svg class="btn-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 2.5h8a.5.5 0 0 1 .5.5v10.4a.3.3 0 0 1-.48.24L8 10.9l-4.02 2.74a.3.3 0 0 1-.48-.24V3a.5.5 0 0 1 .5-.5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>My Bookmarks <b class="count-badge" id="bookmark-badge">0</b></button>
             <button class="btn btn--outline" id="open-feedback">Feature request</button>
             <!-- One entry point to the listing form. The old nav tab did exactly
                  the same thing as this button, so it's gone. -->
@@ -77,8 +69,9 @@
 
           <!-- Live counts for the selected hostel — beside the headline, not
                stranded under the artifact. -->
-          <div class="head-stats" aria-label="Listing counts for the selected hostel">
-            <div class="head-stat"><strong id="rooms-count">0</strong><small>listed</small></div>
+          <div class="head-stats" aria-label="Listing counts">
+            <div class="head-stat head-stat--campus" title="Total room listings across every hostel"><i class="live-dot"></i><strong id="campus-listed-count">0</strong><small>listed campus-wide</small></div>
+            <div class="head-stat"><strong id="rooms-count">0</strong><small>listed here</small></div>
             <div class="head-stat head-stat--open"><strong id="open-swap-count">0</strong><small>open to swap</small></div>
             <div class="head-stat head-stat--match"><strong id="match-count">0</strong><small>matches for you</small></div>
             <button class="btn btn--secondary head-activity" id="swap-activity">Swap activity <b>↗</b></button>
@@ -155,6 +148,7 @@
                     <button type="button" data-mood-choice="night" aria-pressed="false" title="Night: rooms with a listing glow"><span aria-hidden="true">☾</span><b>Night</b></button>
                   </div>
                   <button type="button" class="tool-btn" data-stack-toggle aria-pressed="false" title="Spread every floor apart to see all the room layouts"><span aria-hidden="true">≣</span><b>Stack floors</b></button>
+                  <button type="button" class="tool-btn" data-context-toggle aria-pressed="true" title="Show the neighbouring blocks (from OpenStreetMap footprints). They fade away when you open a floor."><span aria-hidden="true">▤</span><b>Surroundings</b></button>
                   <button type="button" class="tool-btn tool-btn--icon" id="view-reset" title="Reset the camera" aria-label="Reset the camera">⟲</button>
                 </div>
               </div>
@@ -231,7 +225,7 @@
 
         </section>
 
-        <p class="privacy-note">Student-submitted listings · not official allocation data</p>
+        <p class="privacy-note">Student-submitted listings · not official allocation data · Surroundings placed from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a></p>
         <footer class="site-footer">Built with <span class="footer-heart">♥</span> by Chandan Mettu</footer>
       </main>
     </div>
@@ -394,6 +388,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./app.js?v=34"></script>
-    <script type="module" src="./viewer3d.js?v=25"></script>
+    <script type="module" src="./viewer3d.js?v=29"></script>
   </body>
 </html>

@@ -79,12 +79,22 @@ Built on branch `v2`. `main` and the live site are untouched until he approves a
   moved into a band under the model with the lighting and view tools, a three
   step guide in the empty room panel, tablet toolbar wraps (it overflowed the
   page by 65 px at 820 px width, also on v1), no-WebGL falls back to the plan.
+- **Realism pass, same day**, from photographs of Kalam and Bhabha he supplied and
+  the Google Maps satellite view: plan scale corrected to 3.4 cm per pixel (it was
+  5 cm), thick white ribbons, red-orange louvres, slit windows, enclosed ground
+  floor, plain parapet roof with solar arrays and water drums, paved courtyards
+  with planters, young trees, bicycles and street lamps instead of lawn, the seven
+  neighbouring blocks placed from OpenStreetMap footprints with a Surroundings
+  toggle (they sink away when a floor is opened), default camera from the open side
+  like the Bhabha photograph. Header decluttered; counts in one strip. Footer
+  credits OpenStreetMap contributors. Details in `docs/DESIGN.md` and
+  `docs/CAMPUS-RESEARCH.md`.
 - **Link preview:** `assets/og-nivas.jpg` (the real model at dusk, no listings
   drawn on it) and Open Graph tags, for when the link is shared on WhatsApp.
 - Old vendored r160 files moved to `_to-delete/IITH/Nivas/vendor/`.
 - **Before merging:** verify on a real phone; check the host serves `.webp` as
-  `image/webp`; bump `?v=` again if any file changes (currently styles 45,
-  app 34, viewer3d 25). Merging `v2` into `main` also carries the earlier
+  `image/webp`; bump `?v=` again if any file changes (currently styles 49,
+  app 34, viewer3d 29). Merging `v2` into `main` also carries the earlier
   unpushed docs commit `71d8070`.
 - Headless checks only so far (Chrome with software WebGL): desktop 1440,
   tablet 820 and 1000, phone 390, reduced motion, no-WebGL. Not yet seen on a
