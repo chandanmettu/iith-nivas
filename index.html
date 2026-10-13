@@ -5,11 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nivas — IIT Hyderabad hostel finder</title>
     <meta name="description" content="Explore student-submitted IIT Hyderabad room-swap listings floor by floor." />
+    <meta name="theme-color" content="#eef2f6" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
     <!-- Bump ?v= on every CSS/JS change — shared hosting CDNs serve stale assets otherwise. -->
-    <link rel="stylesheet" href="./styles.css?v=43" />
+    <link rel="stylesheet" href="./styles.css?v=45" />
+    <!-- The 3D viewer's imports, fetched in parallel with the page instead of
+         one after another once viewer3d.js has been parsed. -->
+    <link rel="modulepreload" href="./vendor/three-r185/three.module.min.js" />
+    <link rel="modulepreload" href="./vendor/three-r185/three.core.min.js" />
+    <link rel="modulepreload" href="./vendor/three-r185/OrbitControls.js" />
+    <link rel="modulepreload" href="./plan-geometry.js?v=2" />
   </head>
   <body>
     <!-- Layout: a header pill, a headline row with the hostel's live counts on
@@ -54,7 +61,7 @@
 
         <div class="page-head">
           <div class="page-head-copy">
-            <h1 id="page-title">Find the room swap that fits<em>.</em></h1>
+            <h1 id="page-title">Find the room swap that <em>fits</em>.</h1>
             <p>Browse student-posted listings in <strong id="head-hostel">Varahamihira</strong>, floor by floor.</p>
           </div>
 
@@ -111,16 +118,35 @@
 
             <div class="panel-stage">
             <div class="hero-model">
-              <div class="three-view" id="three-view">
+              <div class="three-view is-loading" id="three-view" data-mood="dusk">
+                <!-- The sky is CSS behind a transparent canvas: three layers that
+                     crossfade with the lighting, so a mood change never pops. -->
+                <div class="sky" aria-hidden="true"><i class="sky-day"></i><i class="sky-dusk"></i><i class="sky-night"></i></div>
                 <canvas id="hostel-3d-canvas" aria-label="Interactive 3D IIT Hyderabad hostel building"></canvas>
                 <div class="three-title">
-                  <span id="three-building-label">VARAHAMIHIRA · REFERENCE-INFORMED 3D MODEL</span>
-                  <small id="three-building-meta">Paired leaf clusters · 9 residential levels</small>
+                  <span id="three-building-label">VARAHAMIHIRA · TRACED FROM THE ARCHITECT’S PLAN</span>
+                  <small id="three-building-meta">4 pods · 10 floors · 30 rooms a floor</small>
                 </div>
+                <div class="three-loader" aria-hidden="true">
+                  <span class="loader-louvre"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                  <small>Raising the building</small>
+                </div>
+              </div>
+              <!-- A band under the model, not a card over it: what you're
+                   pointing at on the left, how to look at it on the right. -->
+              <div class="viewer-bar">
                 <div class="three-readout" id="three-readout">
-                  <strong>Orbit the building</strong><span>Drag to rotate · scroll to zoom · click a room</span>
+                  <strong>Orbit the building</strong><span>Drag to orbit · scroll or pinch to zoom · tap a window</span>
                 </div>
-                <div class="three-credit" id="three-credit">Based on the connected leaf-cluster, horizontal-band and rust-red louvre language of the IITH student housing reference.</div>
+                <div class="viewer-tools">
+                  <div class="mood-switch" role="group" aria-label="Lighting">
+                    <button type="button" data-mood-choice="day" aria-pressed="false" title="Daylight"><span aria-hidden="true">☀</span><b>Day</b></button>
+                    <button type="button" data-mood-choice="dusk" aria-pressed="true" title="Dusk, as in the architect’s render"><span aria-hidden="true">◐</span><b>Dusk</b></button>
+                    <button type="button" data-mood-choice="night" aria-pressed="false" title="Night: rooms with a listing glow"><span aria-hidden="true">☾</span><b>Night</b></button>
+                  </div>
+                  <button type="button" class="tool-btn" data-stack-toggle aria-pressed="false" title="Spread every floor apart to see all the room layouts"><span aria-hidden="true">≣</span><b>Stack floors</b></button>
+                  <button type="button" class="tool-btn tool-btn--icon" id="view-reset" title="Reset the camera" aria-label="Reset the camera">⟲</button>
+                </div>
               </div>
             </div>
 
@@ -138,7 +164,7 @@
               </div>
 
               <div class="site-view hidden" id="site-view">
-                <img class="facade-reference" src="./assets/iith-hostel-facade.png" alt="IIT Hyderabad student housing facade" />
+                <img class="facade-reference" data-src="./assets/iith-hostel-facade.png" loading="lazy" alt="IIT Hyderabad student housing facade" />
                 <div class="facade-shade"></div>
                 <div class="site-title"><span>HOSTEL PRECINCT</span><small>Tap a residence to enter</small></div>
                 <div class="north">N<span>↑</span></div>
@@ -157,7 +183,7 @@
                 <div class="floor-canvas">
                   <div class="plan-wrap" id="plan-wrap">
                     <svg class="floor-plan" viewBox="0 0 1748 1252" role="img" aria-label="IIT Hyderabad hostel typical floor plan with selectable rooms">
-                      <image class="blueprint" href="./assets/iith-typical-floor-plan.png" x="0" y="0" width="1748" height="1252" />
+                      <image class="blueprint" data-href="./assets/iith-typical-floor-plan.webp" x="0" y="0" width="1748" height="1252" />
                       <g class="pod-plan-outline" aria-hidden="true">
                         <rect x="190" y="365" width="330" height="255" rx="24" />
                         <rect x="700" y="365" width="330" height="255" rx="24" />
@@ -182,7 +208,12 @@
               <div class="panel-empty">
                 <span class="empty-icon">⌁</span>
                 <h3>Choose a room</h3>
-                <p>Click any room in the building or on the floor plan to see what its resident has posted.</p>
+                <p>Tap any window on the building, or any room on the floor plan, to see what its resident has posted.</p>
+                <ol class="empty-steps">
+                  <li><b>01</b><span><strong>Open a floor</strong> from the rail. The floors above it lift away and show its rooms.</span></li>
+                  <li><b>02</b><span><strong>Tap a room</strong> to see its listing, or bookmark it.</span></li>
+                  <li><b>03</b><span><strong>List your own room</strong> and a match lights up green.</span></li>
+                </ol>
               </div>
               <div class="panel-detail hidden" id="panel-detail"></div>
             </aside>
@@ -352,7 +383,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./app.js?v=32"></script>
-    <script type="module" src="./viewer3d.js?v=17"></script>
+    <script src="./app.js?v=34"></script>
+    <script type="module" src="./viewer3d.js?v=20"></script>
   </body>
 </html>

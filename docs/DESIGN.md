@@ -47,7 +47,7 @@ doesn't have: solid dark with a white cross, inert, never numbered or counted.
 Each has a `-tint` variant for pill backgrounds. The product only communicates
 student-published swap information; it makes no official room-allocation claim.
 
-**`viewer3d.js` duplicates these values** in its `statusColors` map (three.js
+**`viewer3d.js` duplicates these values** in its `STATUS_HEX` map (three.js
 can't read CSS variables). If you change a status colour, change it in both
 places — a room must read as the same state in the 3D scene and on the floor
 plan.
@@ -196,6 +196,42 @@ each other and with the hostel dropdown. See PROGRESS.md.
   shrink their padding), **690px** (topbar wraps, toolbar wraps, stage
   420px, key card collapses to just the first swatch, room-detail card
   narrows further).
+
+## 3D viewer (v2, 2026-10-13)
+
+`viewer3d.js` is one hostel block built from the traced plan (`plan-geometry.js`)
+and dressed from the architect's render: white slab ribbons, terracotta louvres
+over deep balconies, glazed room windows, an open pilotis ground floor, and a
+floating roof canopy. v1 is kept whole in `docs/archive/viewer3d-v1.js`.
+
+- **Rooms are windows.** Each floor's 30 panes are one `InstancedMesh`; the
+  status colour is the pane's instance colour, and a small shader hook adds a
+  glow so a listed room reads as lit from inside. Unlisted stays the dark
+  neutral at every lighting mood, because a warm unlisted window would collide
+  with the yellow "Open to swap" colour.
+- **Opening a floor** lifts every floor above it away on staggered springs and
+  shows that floor's room layout (the same SVG paths as the floor plan) as a cut
+  model, with room numbers and POD 1-4 labels. **Stack floors** spreads all ten.
+- **Lighting moods** (Day / Dusk / Night) crossfade over 900 ms; the sky is CSS
+  behind a transparent canvas. Dusk is the default and matches the render. The
+  choice is remembered in `localStorage` (`nivas-mood`).
+- **The scene renders only when something changes.** A still building costs no
+  frames; it also stops when scrolled away or the tab is hidden. If you add an
+  animation, drive it from `frame()` and keep `invalidate()` the only way to
+  ask for a redraw. Verified: 0 frames in 2 s idle.
+- **The viewer bar** under the model (readout left, mood / stack / reset right)
+  is a band in the column, not an overlay. The "nothing floats over the
+  artifact" rule still holds.
+- **Budget:** about 275k triangles and 148 draw calls per frame with the shadow
+  pass, 111k with one floor opened (`window.nivasViewer.stats`). Fins, frames and
+  sills do not cast shadows and drop the box faces nobody sees. The shell
+  (walls, ribbons, canopy) uses only the outline's corner points.
+- **Hit-testing** includes each floor's solid wall as an occluder, so a click on
+  bare facade can't reach through the building to a window behind it.
+- No WebGL: the page switches itself to the floor plan.
+- Both big reference images load lazily: the floor plan (a pixel-identical
+  lossless WebP, 254 KB, next to the original PNG) once the 3D is up, and the
+  5 MB facade photo only if the hidden Site view is ever restored.
 
 ## Assets
 

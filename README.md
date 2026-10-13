@@ -47,7 +47,7 @@ because a student published one.
 | | |
 |---|---|
 | Frontend | Static HTML, CSS and JS. **No framework, no npm, no build step.** |
-| 3D | [three.js](https://threejs.org/) + OrbitControls, vendored in `vendor/` so it works on locked-down campus networks |
+| 3D | [three.js](https://threejs.org/) r185 (minified) + OrbitControls, vendored in `vendor/three-r185/` so it works on locked-down campus networks |
 | Backend | PHP 8.1+ and MySQL on Hostinger shared hosting |
 
 ```text

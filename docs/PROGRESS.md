@@ -1,6 +1,6 @@
 # Nivas — current progress
 
-Last updated: **2026-09-19**
+Last updated: **2026-10-13** (v2 on branch `v2`, not yet deployed)
 
 Nivas is live at <https://nivas.iith.online> with a PHP/MySQL backend and real
 student-submitted listings. This file is the current operational summary. The
@@ -56,6 +56,37 @@ product enhancements, not deployment blockers.
 6. Verify both the live UI and affected API path with cache-busted requests.
 
 ## Recent production history
+
+### 2026-10-13: v2 of the 3D viewer and page polish (branch `v2`, NOT pushed)
+
+Built on branch `v2`. `main` and the live site are untouched until he approves a push.
+
+- **New `viewer3d.js`**, same building traced from the same plan (v1 kept in
+  `docs/archive/viewer3d-v1.js`): glazed room windows with frames and sills,
+  deep balconies behind terracotta louvres, open pilotis with column lights,
+  roof canopy, lawn, walk, bollards and trees, all from the architect's render.
+- **Interaction:** open a floor and the floors above lift away to show its cut
+  model with room numbers and POD 1-4 labels; "Stack floors" spreads all ten;
+  Day / Dusk / Night lighting; hover and click picking with the solid wall as
+  an occluder; selection pin shared with the floor plan.
+- **Weight:** first load goes from about 5.9 MB to about 0.46 MB (brotli
+  estimate). The 5 MB facade photo and 740 KB floor-plan PNG no longer load
+  eagerly (the facade belongs to a hidden view; the plan is now a pixel-identical
+  254 KB WebP that loads once the 3D is up). three.js is the official minified
+  r185 build in `vendor/three-r185/` (parsed JS 1.2 MB to 0.7 MB). The scene
+  renders only on change: 0 frames when idle. Triangles per frame 488k to 275k.
+- **Page:** headline accent in the display italic, taller stage, the readout
+  moved into a band under the model with the lighting and view tools, a three
+  step guide in the empty room panel, tablet toolbar wraps (it overflowed the
+  page by 65 px at 820 px width, also on v1), no-WebGL falls back to the plan.
+- Old vendored r160 files moved to `_to-delete/IITH/Nivas/vendor/`.
+- **Before merging:** verify on a real phone; check the host serves `.webp` as
+  `image/webp`; bump `?v=` again if any file changes (currently styles 45,
+  app 34, viewer3d 20). Merging `v2` into `main` also carries the earlier
+  unpushed docs commit `71d8070`.
+- Headless checks only so far (Chrome with software WebGL): desktop 1440,
+  tablet 820 and 1000, phone 390, reduced motion, no-WebGL. Not yet seen on a
+  real GPU or touch device.
 
 ### 2026-09-19 — Workspace cleanup and docs handover pass
 

@@ -178,6 +178,10 @@ const voidShapes = [
   /* pod 3 S-left   */ "M992 457 L1039 412 L1056 429 L1056 518 L1042 532 L1005 532 L991 518 Z",
 ];
 
+/* The 3D viewer draws each floor's room layout from these same paths, so the
+   cut model and the floor plan can't drift apart. */
+window.NIVAS_PLAN = { roomShapes, voidShapes };
+
 /* ── Local state ─────────────────────────────────────────────────────────── */
 
 /* What this browser keeps: the student's own listing (so the page is useful
@@ -369,9 +373,8 @@ function statusAtFor(hostel, room) {
 }
 function statusAt(room) { return statusAtFor(currentBuilding(), room); }
 const BUILDING_PROFILE = {
-  architecture: "REFERENCE-INFORMED 3D MODEL",
-  meta: "4 labelled pods · 9 residential levels",
-  credit: "Sample listings are shown for visual testing only.",
+  architecture: "TRACED FROM THE ARCHITECT’S PLAN",
+  meta: "4 pods · 10 floors · 30 rooms a floor",
   roomCaption: "Rooms listed"
 };
 
@@ -635,6 +638,7 @@ function choiceCard(title, preferences) {
 
 function resetPanel() {
   selectedRoomId = null;
+  window.dispatchEvent(new CustomEvent("nivas:room-focus", { detail: { id: null } }));
   document.querySelectorAll(".selected-room").forEach(room => room.classList.remove("selected-room"));
   const own = state.profile;
   const empty = document.querySelector(".panel-empty");
@@ -706,6 +710,7 @@ let selectedRoomId = null;
 
 function openRoom(id, element) {
   selectedRoomId = id;
+  window.dispatchEvent(new CustomEvent("nivas:room-focus", { detail: { id } }));
   document.querySelectorAll(".selected-room").forEach(room => room.classList.remove("selected-room"));
   element?.classList.add("selected-room");
   const status = statusAt(id);
@@ -784,7 +789,6 @@ function setBuilding(hostel) {
   document.getElementById("site-card-building").textContent = name;
   document.getElementById("three-building-label").textContent = `${name.toUpperCase()} · ${BUILDING_PROFILE.architecture}`;
   document.getElementById("three-building-meta").textContent = BUILDING_PROFILE.meta;
-  document.getElementById("three-credit").textContent = BUILDING_PROFILE.credit;
   document.getElementById("facade-hotspot-name").textContent = name;
   document.querySelectorAll(".building-option").forEach(option => {
     const selected = option.dataset.building === name;
@@ -828,8 +832,20 @@ function selectView(view) {
   document.getElementById("visual-stage").classList.toggle("hidden", view === "3d");
   document.querySelector(".hero-model").classList.toggle("hidden", view !== "3d");
   renderFloorRail();
-  if (view === "floor") { renderRooms(); resetPanel(); }
-  if (view === "3d") requestAnimationFrame(() => window.nivasViewer?.resize());
+  if (view === "floor") { loadFloorPlanImage(); renderRooms(); resetPanel(); }
+  if (view === "site") { const facade = document.querySelector(".facade-reference"); if (facade && !facade.src) facade.src = facade.dataset.src; }
+  if (view === "3d") requestAnimationFrame(() => {
+    window.nivasViewer?.resize();
+    // The rail may have changed while the floor plan was open.
+    window.nivasViewer?.setFloor(show3DAll ? "all" : String(activeFloor - 1));
+  });
+}
+
+/* The floor-plan drawing is ~750 KB. It loads when the plan is first opened,
+   or quietly once the 3D view is up, never in the way of first paint. */
+function loadFloorPlanImage() {
+  const image = document.querySelector(".floor-plan .blueprint");
+  if (image && !image.getAttribute("href")) image.setAttribute("href", image.dataset.href);
 }
 
 /* ── Feedback ────────────────────────────────────────────────────────────── */
@@ -1106,7 +1122,12 @@ function bindEvents() {
     if (document.querySelector(".select.open")) return closeAllSelects();
     closeAllModals();
   });
-  window.addEventListener("nivas:viewer-ready", updateViewer);
+  window.addEventListener("nivas:viewer-ready", () => {
+    updateViewer();
+    const idle = window.requestIdleCallback || (callback => setTimeout(callback, 2500));
+    idle(loadFloorPlanImage);
+  });
+  window.addEventListener("nivas:viewer-failed", () => selectView("floor"));
   window.addEventListener("nivas:room-click", event => { if (event.detail?.id) openRoom(event.detail.id); });
 }
 
@@ -1114,6 +1135,7 @@ async function boot() {
   db = await DataSource.load();
   bindEvents(); renderBuildingMenu(); renderProfile(); setBuilding(buildingName);
   selectView("3d");
+  if (window.nivasViewerFailed) selectView("floor");   // WebGL was refused before we were listening
   if (API_BASE) {
     syncBookmarks().then(() => { renderBookmarkBadge(); renderRooms(); });
     /* Other students are posting while this page is open. */

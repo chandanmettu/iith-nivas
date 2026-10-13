@@ -52,8 +52,8 @@ Everything except `docs/` and `tmp/` goes to `public_html/`:
 
 ```
 public_html/
-  index.html  styles.css  app.js  viewer3d.js
-  assets/  vendor/
+  index.html  styles.css  app.js  viewer3d.js  plan-geometry.js
+  assets/  vendor/three-r185/
   api/        ← including config.php, excluding schema.sql if you prefer
 ```
 

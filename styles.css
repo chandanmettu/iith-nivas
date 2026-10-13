@@ -684,13 +684,17 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   margin: var(--s-8) 0 var(--s-5);
 }
 .page-head-copy h1 {
-  font-size: var(--fs-3xl);
+  font-size: var(--fs-4xl);
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -.02em;
   color: var(--ink-900);
 }
-.page-head-copy h1 em { font-style: normal; color: var(--brand-600); }
+.page-head-copy h1 em {
+  font: italic 600 1.08em var(--font-display);
+  letter-spacing: -.01em;
+  color: var(--brand-600);
+}
 .page-head-copy p { margin: var(--s-2) 0 0; color: var(--ink-500); font-size: var(--fs-sm); }
 .page-head-copy strong { color: var(--ink-800); font-weight: 700; }
 
@@ -842,7 +846,7 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   display: grid;
   grid-template-columns: 68px minmax(0, 1fr) var(--detail-w);
   grid-template-areas: "rail stage detail";
-  height: clamp(460px, 64vh, 660px);
+  height: clamp(500px, 70vh, 740px);
   overflow: hidden;                                  /* clips to the card's */
   border-radius: 0 0 var(--r-xl) var(--r-xl);        /* bottom corners      */
 }
@@ -886,7 +890,7 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 
 .panel-stage { grid-area: stage; position: relative; min-width: 0; overflow: hidden; }
 .hero-model, .visual-stage { position: absolute; inset: 0; }
-.hero-model { overflow: hidden; background: var(--scene); }
+.hero-model { display: flex; flex-direction: column; overflow: hidden; background: var(--scene); }
 .visual-stage { background: var(--surface-sunk); }
 
 /* The right column holds room detail and nothing else. Its background carries
@@ -1022,16 +1026,32 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
 
 /* ── 08 Views ────────────────────────────────────────────────────────────── */
 
-/* 3D viewer */
-.three-view { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--scene); }
-.three-view canvas { display: block; width: 100%; height: 100%; outline: 0; }
+/* 3D viewer. The canvas is transparent; the sky behind it is CSS, three
+   layers that crossfade with the lighting (viewer3d.js sets data-mood). */
+.three-view { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--scene); }
+.three-view canvas { position: relative; z-index: 1; display: block; width: 100%; height: 100%; outline: 0; cursor: grab; touch-action: none; }
+.three-view canvas:active { cursor: grabbing; }
+
+.sky, .sky i { position: absolute; inset: 0; }
+.sky i { opacity: 0; transition: opacity 900ms var(--ease); }
+.sky-day   { background: linear-gradient(180deg, #a9c6e3 0%, #d7e5f0 46%, #eef1ee 70%, #e6ecdf 100%); }
+.sky-dusk  { background: linear-gradient(180deg, #3d3a6b 0%, #8f6d97 32%, #e3a790 58%, #f3cfb2 74%, #c7a7a3 100%); }
+.sky-night { background: radial-gradient(120% 70% at 70% 0%, #33427a 0%, transparent 60%), linear-gradient(180deg, #0f1430 0%, #1c2447 50%, #2a3051 74%, #20253f 100%); }
+.three-view[data-mood="day"]   .sky-day,
+.three-view[data-mood="dusk"]  .sky-dusk,
+.three-view[data-mood="night"] .sky-night { opacity: 1; }
 
 .three-title {
   position: absolute;
-  top: var(--s-6);
-  left: var(--s-6);
+  z-index: 2;
+  top: var(--s-5);
+  left: var(--s-5);
   display: grid;
-  gap: var(--s-1);
+  gap: 2px;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  background: rgba(24, 16, 20, .32);
+  backdrop-filter: blur(6px);
   color: var(--on-scene);
   pointer-events: none;
 }
@@ -1041,70 +1061,91 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   color: var(--on-scene-label);
 }
 .three-title small { font: 600 var(--fs-xs) var(--font-sans); }
+.three-view[data-mood="day"] .three-title { background: rgba(255, 255, 255, .55); color: var(--ink-800); }
+.three-view[data-mood="day"] .three-title span { color: var(--brand-600); }
 
-/* Shared treatment for every floating panel over the 3D scene */
-.three-readout, .friend-city-hud {
-  border: 1px solid var(--scene-edge);
-  background: var(--scene-panel);
-  color: var(--on-scene);
-  backdrop-filter: blur(8px);
-}
-.three-readout {
+/* Loading: a louvre screen that ripples until the first frame is drawn. */
+.three-loader {
   position: absolute;
-  right: var(--s-5);
-  top: var(--s-5);
-  min-width: 224px;
-  padding: var(--s-3);
-  border-radius: var(--r-md);
-  pointer-events: none;
-}
-.three-readout strong { display: block; font-size: var(--fs-xs); }
-.three-readout span { display: block; margin-top: 3px; font-size: var(--fs-micro); color: var(--on-scene-muted); }
-
-.friend-city-hud {
-  position: absolute;
-  left: var(--s-6);
-  bottom: var(--s-6);
-  z-index: 2;
-  width: 256px;
-  padding: var(--s-3) var(--s-4);
-  border-radius: var(--r-md);
-}
-.friend-city-hud > span {
-  display: block;
+  z-index: 3;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--s-3);
+  color: var(--on-scene-muted);
   font: var(--fs-micro) var(--font-mono);
   letter-spacing: var(--track-mono);
-  color: var(--on-scene-label);
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 500ms var(--ease);
 }
-.friend-city-hud strong { display: block; margin: var(--s-1) 0; font-size: var(--fs-md); }
-.friend-city-hud strong b { color: var(--accent-500); }
-.friend-city-hud small { display: block; color: var(--on-scene-muted); font-size: var(--fs-micro); line-height: var(--lh-base); }
-.friend-city-hud ul { display: grid; gap: 3px; margin: var(--s-2) 0 0; padding: 0; list-style: none; }
-.friend-city-hud li {
+.three-view.is-loading .three-loader { opacity: 1; }
+.three-view.is-loading canvas { opacity: 0; }
+.three-view canvas { transition: opacity 700ms var(--ease); }
+.loader-louvre { display: flex; align-items: end; gap: 5px; height: 44px; }
+.loader-louvre i {
+  width: 6px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent-500);
+  transform-origin: bottom;
+  animation: louvre 1.1s var(--ease) infinite alternate;
+}
+.loader-louvre i:nth-child(2n) { background: var(--brand-500); }
+.loader-louvre i:nth-child(2) { animation-delay: .08s; }
+.loader-louvre i:nth-child(3) { animation-delay: .16s; }
+.loader-louvre i:nth-child(4) { animation-delay: .24s; }
+.loader-louvre i:nth-child(5) { animation-delay: .32s; }
+.loader-louvre i:nth-child(6) { animation-delay: .40s; }
+.loader-louvre i:nth-child(7) { animation-delay: .48s; }
+@keyframes louvre { from { transform: scaleY(.25); } to { transform: scaleY(1); } }
+.three-view.no-webgl .three-loader { display: none; }
+
+/* The band under the model: what you're pointing at, and how to look at it. */
+.viewer-bar {
   display: flex;
   align-items: center;
-  gap: var(--s-2);
-  color: var(--on-scene-muted);
-  font-size: var(--fs-micro);
+  gap: var(--s-4);
+  min-height: 56px;
+  padding: var(--s-2) var(--s-3) var(--s-2) var(--s-5);
+  border-top: 1px solid var(--scene-edge);
+  background: #1d1417;
+  color: var(--on-scene);
 }
-.friend-city-hud li i { width: 7px; height: 7px; border-radius: var(--r-pill); background: var(--status-intern); }
-.friend-city-hud li i.mtech { background: var(--status-mtech); }
-.friend-city-hud li i.phd { background: var(--status-graduate); }
-.friend-city-hud li b { margin-left: auto; color: var(--on-scene); font: var(--fs-micro) var(--font-mono); }
+.three-readout { min-width: 0; flex: 1; }
+.three-readout strong { display: block; font-size: var(--fs-sm); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.three-readout span { display: block; margin-top: 1px; font-size: var(--fs-xs); color: var(--on-scene-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.three-credit {
-  position: absolute;
-  left: 50%;
-  bottom: var(--s-6);
-  transform: translateX(-50%);
-  color: var(--on-scene-muted);
-  font-size: var(--fs-micro);
-  text-align: center;
-  opacity: .8;
-  white-space: nowrap;
-  pointer-events: none;
+.viewer-tools { display: flex; align-items: center; gap: var(--s-2); flex: none; }
+.mood-switch {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--scene-edge);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .04);
 }
-.friend-city .three-readout { top: auto; bottom: var(--s-6); }
+.mood-switch button, .tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--on-scene-muted);
+  font: 600 var(--fs-xs) var(--font-sans);
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.mood-switch button span, .tool-btn span { font-size: 14px; line-height: 1; }
+.mood-switch button:hover, .tool-btn:hover { color: var(--on-scene); background: rgba(255, 255, 255, .08); }
+.mood-switch button[aria-pressed="true"] { background: var(--on-scene); color: var(--brand-700); }
+.tool-btn { border: 1px solid var(--scene-edge); }
+.tool-btn[aria-pressed="true"] { border-color: var(--accent-500); background: var(--accent-500); color: #fff; }
+.tool-btn--icon { width: 36px; padding: 0; justify-content: center; font-size: 16px; }
 
 /* Campus map */
 .map-view { position: relative; height: 100%; background: var(--surface-sunk); }
@@ -1298,7 +1339,29 @@ h1, h2, h3 { margin: 0; line-height: var(--lh-tight); letter-spacing: -.02em; }
   font-size: var(--fs-xl);
 }
 .panel-empty h3 { margin: var(--s-3) 0 var(--s-1); color: var(--ink-600); font-size: var(--fs-md); }
-.panel-empty p { margin: 0; font-size: var(--fs-micro); line-height: var(--lh-loose); }
+.panel-empty p { margin: 0 auto; max-width: 30ch; font-size: var(--fs-xs); line-height: var(--lh-base); }
+.empty-steps {
+  display: grid;
+  gap: var(--s-2);
+  margin: var(--s-5) 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+.empty-steps li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: var(--s-2);
+  align-items: start;
+  padding: var(--s-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.empty-steps b { font: 500 var(--fs-micro) var(--font-mono); letter-spacing: var(--track-mono); color: var(--accent-600); padding-top: 2px; }
+.empty-steps strong { color: var(--ink-800); }
 
 .detail-top { display: flex; justify-content: space-between; align-items: start; }
 .detail-top p {
@@ -1564,9 +1627,10 @@ body { background: var(--canvas); }
 .nav-item { color: var(--ink-600); font-size: var(--fs-sm); }
 .nav-item.active { box-shadow: inset 0 0 0 1px var(--brand-100); }
 
-/* The toolbar names the hostel and the detail column reports the clicked
-   room, so both on-canvas text overlays would only repeat them. */
-.hero-model .three-title, .hero-model .three-readout { display: none; }
+/* The toolbar names the hostel, so an on-canvas title would only repeat it.
+   The readout stays: it lives in the band under the model and reports the
+   room under the pointer, which nothing else on the page does. */
+.hero-model .three-title { display: none; }
 
 .segmented { border: 1px solid var(--line); border-radius: var(--r-pill); padding: var(--s-1); background: var(--surface); }
 .seg-btn { min-height: 38px; padding: var(--s-2) var(--s-4); border-radius: var(--r-pill); font-size: var(--fs-xs); }
@@ -1627,6 +1691,10 @@ body { background: var(--canvas); }
     border-top: 1px solid var(--line);
     max-height: 65vh;
   }
+  /* Picker, key and view switch no longer fit one row (they overflowed the
+     page by ~65px at 820px): let the toolbar wrap instead. */
+  .toolbar { height: auto; flex-wrap: wrap; row-gap: var(--s-3); padding: var(--s-3) var(--s-5); }
+  .toolbar .key { margin-left: 0; flex-wrap: wrap; row-gap: var(--s-2); }
   .page-head { align-items: flex-start; flex-direction: column; gap: var(--s-4); }
   .head-stats { width: 100%; gap: var(--s-8); }
   .head-stat { text-align: left; }
@@ -1697,7 +1765,7 @@ body { background: var(--canvas); }
 
   /* Stage: narrower floor rail, comfortable but not oversized touch targets. */
   .stage-grid { grid-template-columns: 48px minmax(0, 1fr); }
-  .panel-stage { height: 420px; min-height: 0; }
+  .panel-stage { height: 540px; min-height: 0; }
   .floor-rail { padding: var(--s-3) 0; gap: var(--s-1); }
   .floor-rail button { width: 36px; height: 34px; }
 
@@ -1705,8 +1773,13 @@ body { background: var(--canvas); }
      224px min-width would overlap the title text in the opposite corner. */
   .three-title { top: var(--s-4); left: var(--s-4); max-width: 60%; }
   .three-title span { font-size: 9px; }
-  .three-readout { display: none; }   /* "drag to rotate" — touch orbit is a known gesture, and this collided with .three-title on narrow stages */
-  .three-credit { display: none; }
+  /* The band under the model wraps: what you're pointing at gets a full row,
+     the lighting and view tools sit on the row beneath it. */
+  .viewer-bar { flex-wrap: wrap; padding: var(--s-3); gap: var(--s-2); }
+  .three-readout { flex: 1 1 100%; }
+  .viewer-tools { width: 100%; justify-content: space-between; }
+  .tool-btn b { display: none; }
+  .tool-btn { width: 38px; padding: 0; justify-content: center; }
 
   .choice-tiles, .choice-tiles--three { grid-template-columns: 1fr; }
   /* The listing/feedback/verify forms use a 6-column .form-grid (span-2 =
@@ -1748,8 +1821,6 @@ body { background: var(--canvas); }
   .site-footer { text-align: left; }
   .site-card, .map-card { right: var(--s-3); top: 58px; width: 168px; padding: var(--s-3); }
   .floor-canvas { padding: var(--s-3); }
-  .friend-city-hud { left: var(--s-3); bottom: var(--s-3); width: 224px; }
-  .friend-city .three-readout { display: none; }
   .modal-card { padding: var(--s-6) var(--s-4); max-height: 88vh; overflow-y: auto; }
   .field-grid, .friend-directory { grid-template-columns: 1fr; }
   .modal-heading { flex-direction: column; align-items: start; gap: var(--s-1); }
