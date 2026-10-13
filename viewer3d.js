@@ -252,10 +252,25 @@ function slabGeometry(points, height, holePoints, bevel = 0) {
   if (bevel) geometry.translate(0, bevel, 0);
   return geometry;
 }
+/* A flat ring, facing DOWN, for the canopy's lit underside. Where the inner
+   outline folds back on a tight curve the triangulator emits a few flipped
+   slivers; they showed up as stray specks in the sky. Only triangles that agree
+   with the ring's winding are kept (and flipped to face down). */
 function ringFlat(outer, inner) {
   const shape = shapeOf(outer);
   shape.holes.push(new THREE.Path(inner.slice().reverse().map(point => new THREE.Vector2(point.x, -point.y))));
-  return new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2);
+  const source = new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2).toNonIndexed();
+  const position = source.attributes.position, kept = [];
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let i = 0; i < position.count; i += 3) {
+    a.fromBufferAttribute(position, i); b.fromBufferAttribute(position, i + 1); c.fromBufferAttribute(position, i + 2);
+    const facing = (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);   // y of (b-a)x(c-a)
+    if (facing < -1e-6) kept.push(a.x, a.y, a.z, c.x, c.y, c.z, b.x, b.y, b.z);   // reversed: faces down
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(kept, 3));
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
 /* Which stretches of the perimeter are room facade, and which are louvred
@@ -525,7 +540,7 @@ mesh(slabGeometry(shellRing(2.4), .14), [materials.paving, materials.paving], gr
   const lawn = mesh(new THREE.CircleGeometry(95, 72).rotateX(-Math.PI / 2), materials.lawn, groundGroup, { cast: false });
   lawn.renderOrder = -1;
 }
-const pathCurve = new THREE.CatmullRomCurve3([[-80, 0, 19], [-42, 0, 16.5], [-14, 0, 19.5], [12, 0, 16], [40, 0, 18.5], [80, 0, 16]].map(p => new THREE.Vector3(...p)));
+const pathCurve = new THREE.CatmullRomCurve3([[-50, 0, 19], [-28, 0, 16.5], [-10, 0, 19.5], [9, 0, 16], [30, 0, 18.5], [50, 0, 16]].map(p => new THREE.Vector3(...p)));
 {
   const samples = 140, half = .85, position = [], normal = [], index = [];
   for (let i = 0; i <= samples; i++) {
@@ -543,7 +558,7 @@ const pathCurve = new THREE.CatmullRomCurve3([[-80, 0, 19], [-42, 0, 16.5], [-14
 
   // Bollards every ~4 m along the walk's north edge.
   const spots = [];
-  for (let t = .2; t <= .8; t += .022) spots.push(t);
+  for (let t = .08; t <= .92; t += .036) spots.push(t);   // the walk ends inside the opaque part of the lawn
   const posts = new THREE.InstancedMesh(new THREE.CylinderGeometry(.07, .08, .62, 8), materials.metal, spots.length);
   const caps = new THREE.InstancedMesh(new THREE.CylinderGeometry(.075, .075, .1, 8), materials.lamp, spots.length);
   spots.forEach((t, i) => {
@@ -559,7 +574,7 @@ const pathCurve = new THREE.CatmullRomCurve3([[-80, 0, 19], [-42, 0, 16.5], [-14
 // Trees, instanced: trunk plus a three-blob crown of low-poly foliage.
 {
   const random = seeded(23);
-  const candidates = [[-30, 7], [-27, -6], [-22, -15], [-31, -18], [27, -9], [31, 6], [24, 13], [-9, -16.5], [6, -17], [17, -18],
+  const candidates = [[-30, 7], [-27, -6], [-22, -15], [-31, -18], [27, -9], [31, 6], [33, 17], [-9, -16.5], [6, -17], [17, -18],
     [-36, 1], [37, -2], [-18, 13.5], [-26, 23], [44, 12], [-44, -10], [-14, -24], [9, -26], [30, -22], [-40, 14], [40, -14]];
   const outer = offsetRing(3.2);
   const spots = candidates.filter(([x, z]) => !insidePolygon(outer, x, z));
@@ -633,7 +648,7 @@ mesh(slabGeometry(shellRing(.02), .34, shellRing(-.3)), [materials.band, materia
 {
   const outer = shellRing(.42), inner = shellRing(-.85);
   mesh(slabGeometry(outer, .24, inner), [materials.canopy, materials.canopy], roofGroup, { y: canopyY });
-  mesh(ringFlat(outer, inner).rotateX(Math.PI), materials.soffit, roofGroup, { y: canopyY - .004, cast: false });
+  mesh(ringFlat(outer, inner), materials.soffit, roofGroup, { y: canopyY - .004, cast: false });
   const spots = [];
   for (let index = 3; index < RING; index += 11) spots.push(index);
   const height = canopyY - (roofLevel + .76);
@@ -648,8 +663,9 @@ mesh(slabGeometry(shellRing(.02), .34, shellRing(-.3)), [materials.band, materia
 
 /* Building identity. A sprite above the canopy turns to face the camera, so
    the name is legible and complete from every orbit position. */
-const nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
-nameSprite.position.set(0, canopyY + 1.9, 0);
+const nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, depthTest: false }));
+nameSprite.renderOrder = 10;   // a label: never hidden behind the canopy
+nameSprite.position.set(0, canopyY + 2.9, 0);
 nameSprite.scale.set(7.2, 1.41, 1);
 roofGroup.add(nameSprite);
 
