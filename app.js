@@ -27,10 +27,15 @@ const POD_OF_ROOM = POD_SIZES.flatMap((size, index) => Array(size).fill(index + 
 const DEMO_MODE = false;
 
 const HOSTELS = [
-  "Aryabhatta", "Bhabha", "Bhaskara", "Brahmagupta", "Charaka", "Kalam",
-  "Kapila", "Kautilya", "Raman", "Ramanujan", "Sarabhai",
-  "Susruta", "Varahamihira", "Viswesvaraya", "Vyasa"
+  "Bhabha", "Bhaskara", "Brahmagupta", "Charaka", "Kalam", "Kautilya",
+  "Raman", "Ramanujan", "Sarabhai", "Susruta", "Varahamihira",
+  "Viswesvaraya", "Vyasa"
 ];
+/* The older blocks have six floors (rooms 101-630); the newer blocks have ten.
+   Aryabhatta (a girls' hostel) and Kapila (not this kind of block) are not
+   listed. Mirrors api/db.php. */
+const SIX_FLOOR_HOSTELS = new Set(["Bhaskara", "Brahmagupta", "Charaka", "Kautilya", "Susruta", "Varahamihira", "Vyasa"]);
+function floorsFor(hostel) { return SIX_FLOOR_HOSTELS.has(hostel) ? 6 : FLOOR_COUNT; }
 
 const DEMO_LISTINGS = [
   ["901", true], ["902", true], ["904", true], ["906", true], ["908", true],
@@ -211,7 +216,7 @@ function loadState() {
 /* The local copy keeps the fields the API strips from other people's
    listings, because for your own listing you are allowed to see them. */
 function sanitiseLocalProfile(profile) {
-  if (!profile || !HOSTELS.includes(profile.hostel) || !normaliseRoom(profile.room)) return null;
+  if (!profile || !HOSTELS.includes(profile.hostel) || !normaliseRoom(profile.room, profile.hostel)) return null;
   if (!profile.name || !profile.email) return null;
   const listing = sanitiseListing({ ...profile, shareContact: true });
   if (!listing) return null;
@@ -309,12 +314,13 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>'"]/g, character =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character]));
 }
-function roomMeta(value) {
+function roomMeta(value, hostel) {
+  const maxFloor = hostel ? floorsFor(hostel) : FLOOR_COUNT;
   const digits = String(value || "").trim().replace(/\D/g, "");
   if (!/^\d{3,4}$/.test(digits)) return null;
   const floor = Number(digits.length === 3 ? digits[0] : digits.slice(0, -2));
   const roomInFloor = Number(digits.slice(-2));
-  if (floor < 1 || floor > FLOOR_COUNT || roomInFloor < 1 || roomInFloor > ROOMS_PER_FLOOR) return null;
+  if (floor < 1 || floor > maxFloor || roomInFloor < 1 || roomInFloor > ROOMS_PER_FLOOR) return null;
   const pod = POD_OF_ROOM[roomInFloor - 1];
   return { id: `${floor}${String(roomInFloor).padStart(2, "0")}`, floor, roomInFloor, pod };
 }
@@ -323,8 +329,8 @@ function podRange(pod) {
   const pad = value => String(value).padStart(2, "0");
   return `${pad(first)}–${pad(first + POD_SIZES[pod - 1] - 1)}`;
 }
-function normaliseRoom(value) {
-  return roomMeta(value)?.id || "";
+function normaliseRoom(value, hostel) {
+  return roomMeta(value, hostel)?.id || "";
 }
 function currentBuilding() {
   if (db.hostels.includes(buildingName)) return buildingName;
@@ -374,7 +380,8 @@ function statusAtFor(hostel, room) {
 function statusAt(room) { return statusAtFor(currentBuilding(), room); }
 const BUILDING_PROFILE = {
   architecture: "TRACED FROM THE ARCHITECT’S PLAN",
-  meta: "4 pods · 10 floors · 30 rooms a floor",
+  architectureSix: "TYPICAL PLAN, SIX FLOORS",
+  meta: floors => `4 pods · ${floors} floors · 30 rooms a floor`,
   roomCaption: "Rooms listed"
 };
 
@@ -544,7 +551,7 @@ function renderFloorRail() {
   const allButton = document.getElementById("floor-all");
   const showingAll = activeView === "3d" && show3DAll;
   holder.innerHTML = "";
-  for (let floor = FLOOR_COUNT; floor >= 1; floor--) {
+  for (let floor = floorsFor(currentBuilding()); floor >= 1; floor--) {
     const button = document.createElement("button");
     button.textContent = String(floor).padStart(2, "0");
     button.dataset.floor = floor;
@@ -747,7 +754,7 @@ function roomStatusMapFor(hostel) {
   return Object.fromEntries(activeListings().filter(listing => listing.hostel === hostel).map(listing => [listing.room, statusAtFor(hostel, listing.room)]));
 }
 function updateViewer() {
-  const detail = { name: currentBuilding(), roomStatuses: roomStatusMapFor(currentBuilding()) };
+  const detail = { name: currentBuilding(), roomStatuses: roomStatusMapFor(currentBuilding()), floors: floorsFor(currentBuilding()) };
   window.dispatchEvent(new CustomEvent("nivas:building-change", { detail }));
 }
 function updateSummary() {
@@ -784,17 +791,21 @@ function setBuilding(hostel) {
   buildingName = hostel;
   const name = currentBuilding();
   buildingName = name;
+  const floorsHere = floorsFor(name);
+  if (activeFloor > floorsHere) activeFloor = floorsHere;
   document.getElementById("building-name").textContent = name;
   document.getElementById("head-hostel").textContent = name;
   document.getElementById("site-card-building").textContent = name;
-  document.getElementById("three-building-label").textContent = `${name.toUpperCase()} · ${BUILDING_PROFILE.architecture}`;
-  document.getElementById("three-building-meta").textContent = BUILDING_PROFILE.meta;
+  document.getElementById("three-building-label").textContent = `${name.toUpperCase()} · ${floorsHere < FLOOR_COUNT ? BUILDING_PROFILE.architectureSix : BUILDING_PROFILE.architecture}`;
+  document.getElementById("three-building-meta").textContent = BUILDING_PROFILE.meta(floorsHere);
+  const siteMeta = document.getElementById("site-card-meta");
+  if (siteMeta) siteMeta.textContent = `${floorsHere} floors · 30 rooms per floor`;
   document.getElementById("facade-hotspot-name").textContent = name;
   document.querySelectorAll(".building-option").forEach(option => {
     const selected = option.dataset.building === name;
     option.classList.toggle("selected", selected); option.setAttribute("aria-selected", String(selected));
   });
-  renderRooms(); resetPanel(); updateViewer();
+  renderRooms(); resetPanel(); renderFloorRail(); updateViewer();
 }
 let buildingMenuOrder = [];
 function renderBuildingMenu() {
@@ -1060,7 +1071,14 @@ function bindEvents() {
       willingToMove,
       preferences
     });
-    if (!draft) return showToast("Use a room number like 912 and complete every required field.");
+    if (!draft) {
+      const hostel = form.elements.hostel.value;
+      if (HOSTELS.includes(hostel) && !roomMeta(form.elements.room.value, hostel)) {
+        const top = floorsFor(hostel);
+        return showToast(`${hostel} has floors 1 to ${top}. Use a room number like ${top}12.`);
+      }
+      return showToast("Use a room number like 512 and complete every required field.");
+    }
     if (draft.shareContact && !draft.phone) return showToast("Add a phone number, or untick sharing your contact.");
     await publishListing(draft);
   });

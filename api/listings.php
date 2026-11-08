@@ -89,10 +89,10 @@ if (!empty($body['delete'])) {
 nivas_throttle('listing', 20, 3600);
 
 $hostel = nivas_hostel(nivas_str($body, 'hostel', 64, true));
-$room   = nivas_room(nivas_str($body, 'room', 8, true));
 $name   = nivas_str($body, 'name', 64, true);
 if ($hostel === '') nivas_fail(422, 'Pick a hostel from the list.');
-if ($room === '')   nivas_fail(422, 'Use a room number like 912 — floor 1-9, room 01-30.');
+$room   = nivas_room(nivas_str($body, 'room', 8, true), $hostel);
+if ($room === '')   nivas_fail(422, 'Use a room number like 512: ' . $hostel . ' has floors 1-' . nivas_floors_for($hostel) . ', rooms 01-30.');
 
 $share = !empty($body['shareContact']);
 $phone = nivas_phone(nivas_str($body, 'phone', 24));
@@ -135,7 +135,7 @@ try {
         $insert->execute([
             $listingId, ++$rank, $prefHostel,
             ($pod >= 1 && $pod <= 4) ? $pod : null,
-            ($floor >= 1 && $floor <= NIVAS_FLOOR_COUNT) ? $floor : null,
+            ($floor >= 1 && $floor <= nivas_floors_for($prefHostel)) ? $floor : null,
         ]);
     }
     $db->commit();

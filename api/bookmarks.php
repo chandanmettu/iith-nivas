@@ -23,7 +23,7 @@ if (mb_strlen($device) < 16) {
 $deviceHash = nivas_hash($device);
 
 $hostel = nivas_hostel(nivas_str($body, 'hostel', 64));
-$room   = nivas_room(nivas_str($body, 'room', 8));
+$room   = nivas_room(nivas_str($body, 'room', 8), $hostel);
 
 // A hostel+room in the body means "toggle this one"; otherwise it's a read.
 if ($hostel !== '' && $room !== '') {

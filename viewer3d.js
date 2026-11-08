@@ -49,7 +49,11 @@ renderer.shadowMap.autoUpdate = false;   // redrawn only when something casting 
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog('#c9a9a6', 110, 420);
-const camera = new THREE.PerspectiveCamera(34, 1, .5, 900);
+// Near/far kept tight: phone GPUs have little depth precision, and a 0.5..900
+// range made close faces (bands on walls, louvres) shimmer as the camera moved.
+// The fog has swallowed everything by 420, and the camera never gets nearer
+// than ~9 units to its target.
+const camera = new THREE.PerspectiveCamera(34, 1, 1.5, 600);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.dampingFactor = .085;
@@ -1014,9 +1018,24 @@ function refreshBoosts() {
   floors.forEach((level, floor) => { for (let room = 0; room < ROOM_COUNT; room++) paintRoom(floor, room); });
 }
 
-function setBuilding(name, roomStatuses = {}) {
+function setBuilding(name, roomStatuses = {}, floorsHere = FLOOR_COUNT) {
   const renamed = name !== hostelName;
   hostelName = name;
+  const nextCount = Math.max(1, Math.min(FLOOR_COUNT, Math.round(floorsHere) || FLOOR_COUNT));
+  if (nextCount !== floorCount) {
+    floorCount = nextCount;
+    springs.forEach((spring, index) => { spring.absent = index < FLOOR_COUNT && index >= floorCount; });
+    if (openFloor !== null && openFloor >= floorCount) openFloor = null;
+    if (selected && selected.floor >= floorCount) selected = null;
+    // The neighbours are the newer cluster, so they only make sense around those blocks.
+    document.querySelectorAll('[data-context-toggle]').forEach(button => {
+      button.disabled = floorCount < FLOOR_COUNT;
+      button.title = floorCount < FLOOR_COUNT ? 'Surroundings are mapped for the newer ten-floor blocks only' : '';
+    });
+    layoutFloors();
+    flyTo(pose());
+    idleReadout();
+  }
   floors.forEach((level, floor) => {
     for (let room = 0; room < ROOM_COUNT; room++) {
       const status = roomStatuses[roomIdOf(floor, room)];
@@ -1037,7 +1056,7 @@ function roomFromId(id) {
   const match = /^(\d{1,2})(\d{2})$/.exec(String(id || ''));
   if (!match) return null;
   const floor = Number(match[1]) - 1, room = Number(match[2]) - 1;
-  return floor >= 0 && floor < FLOOR_COUNT && room >= 0 && room < ROOM_COUNT ? { floor, room } : null;
+  return floor >= 0 && floor < floorCount && room >= 0 && room < ROOM_COUNT ? { floor, room } : null;
 }
 function describe(target) {
   const status = floors[target.floor].status[target.room];
@@ -1078,12 +1097,17 @@ function focusRoom(id) {
 
 let openFloor = null;      // index, or null for all floors
 let stacked = false;
+/* The model is the ten-floor block type. The older hostels have six floors, so
+   for those the top floors are left out and the roof sits on floor six. */
+let floorCount = FLOOR_COUNT;
+const FLOOR_WORDS = { 6: 'six', 10: 'ten' };
+const floorsWord = () => FLOOR_WORDS[floorCount] || String(floorCount);
 
 /* The neighbouring blocks are context. They sink away (and stop casting shadows)
    when you open a floor or spread the stack, and the Surroundings button switches
    them off for good, so nothing ever stands between you and a room. */
 let contextWanted = true, contextT = 1;
-const contextShown = () => contextWanted && openFloor === null && !stacked;
+const contextShown = () => contextWanted && openFloor === null && !stacked && floorCount === FLOOR_COUNT;
 function stepContext(dt) {
   const target = contextShown() ? 1 : 0;
   if (Math.abs(contextT - target) < .004) {
@@ -1102,6 +1126,7 @@ function stepContext(dt) {
 const springs = [...floors.map(level => level.group), roofGroup].map(object => ({ object, x: 0, v: 0, target: 0, delay: 0 }));
 
 function floorOffset(index) {
+  if (index === FLOOR_COUNT && floorCount < FLOOR_COUNT) return floorOffset(floorCount) - (FLOOR_COUNT - floorCount) * floorHeight;
   let offset = stacked ? index * STACK_GAP : 0;
   if (openFloor !== null && index > openFloor) offset += LIFT + (index - openFloor) * 2.2;
   return offset;
@@ -1110,12 +1135,13 @@ function layoutFloors() {
   const now = performance.now();
   springs.forEach((spring, index) => {
     const target = floorOffset(index);
-    if (target === spring.target) return;
+    if (spring.absent) { spring.object.visible = false; return; }   // above this hostel's top floor
+    if (target === spring.target) { if (spring.x === target) spring.object.visible = target < LIFT * .5; return; }
     const rising = target > spring.target;
     const order = openFloor === null ? index : Math.max(0, index - openFloor);
     spring.delay = now + (rising ? order : (springs.length - order)) * 45;
     spring.target = target;
-    spring.object.visible = true;
+    spring.object.visible = !spring.absent;
   });
   floors.forEach((level, index) => { level.plate.visible = stacked || index === openFloor; });
   placeLabels();
@@ -1127,7 +1153,7 @@ function layoutFloors() {
 function settleSpring(spring) {
   spring.x = spring.target; spring.v = 0; spring.delay = 0;
   spring.object.position.y = spring.x;
-  spring.object.visible = spring.target < LIFT * .5;
+  spring.object.visible = !spring.absent && spring.target < LIFT * .5;
 }
 function stepSprings(dt, now) {
   let moving = false;
@@ -1156,12 +1182,12 @@ function fitDistance() {
 function pose(kind) {
   const distance = fitDistance();
   if (kind === 'intro') return { target: new THREE.Vector3(0, 9, 0), radius: distance * 1.25, phi: Math.PI * .34, theta: AZIMUTH - .95 };
-  if (stacked && openFloor === null) return { target: new THREE.Vector3(0, 10 + FLOOR_COUNT * STACK_GAP / 2, 0), radius: distance * 1.3, phi: Math.PI * .40, theta: null };
+  if (stacked && openFloor === null) return { target: new THREE.Vector3(0, 10 + floorCount * STACK_GAP / 2 - (FLOOR_COUNT - floorCount) * floorHeight / 2, 0), radius: distance * 1.3, phi: Math.PI * .40, theta: null };
   if (openFloor !== null) {
     const top = groundClearance + (openFloor + 1) * floorHeight + (stacked ? openFloor * STACK_GAP : 0);
     return { target: new THREE.Vector3(0, top * .8, 0), radius: distance * .78, phi: Math.PI * .27, theta: null };
   }
-  return { target: new THREE.Vector3(0, 9.0, 0), radius: distance, phi: Math.PI * .385, theta: AZIMUTH };
+  return { target: new THREE.Vector3(0, 9.0 - (FLOOR_COUNT - floorCount) * floorHeight / 2, 0), radius: distance, phi: Math.PI * .385, theta: AZIMUTH };
 }
 function currentSpherical() {
   return new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
@@ -1307,12 +1333,19 @@ function frame(now) {
   if (active) { lastTime = now; frameId = requestAnimationFrame(frame); }
 }
 
+// Phones fire "resize" every time the address bar slides while scrolling. Resizing
+// the canvas clears it, so doing that for an unchanged size flashed a blank frame;
+// skip it, and when the size really changes draw at once instead of next frame.
+let sizedW = 0, sizedH = 0;
 function resize() {
   const { width, height } = canvas.getBoundingClientRect();
-  if (!width || !height) return;
-  camera.aspect = width / height;
+  const w = Math.round(width), h = Math.round(height);
+  if (!w || !h || (w === sizedW && h === sizedH)) return;
+  sizedW = w; sizedH = h;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(width, height, false);
+  renderer.setSize(w, h, false);
+  if (!firstFrame) renderer.render(scene, camera);
   invalidate();
 }
 window.addEventListener('resize', resize);
@@ -1398,8 +1431,8 @@ canvas.addEventListener('pointerleave', () => {
 function idleReadout() {
   if (!readout || selected) return;
   if (openFloor !== null) readout.innerHTML = `<strong>Floor ${String(openFloor + 1).padStart(2, '0')} opened up</strong><span>The floors above lift away · tap a room</span>`;
-  else if (stacked) readout.innerHTML = '<strong>All ten floors, spread apart</strong><span>Every level’s rooms at once · tap any room</span>';
-  else readout.innerHTML = `<strong>${hostelName || 'Hostel'} · all ten floors</strong><span>Drag to orbit · scroll or pinch to zoom · tap a window</span>`;
+  else if (stacked) readout.innerHTML = `<strong>All ${floorsWord()} floors, spread apart</strong><span>Every level’s rooms at once · tap any room</span>`;
+  else readout.innerHTML = `<strong>${hostelName || 'Hostel'} · all ${floorsWord()} floors</strong><span>Drag to orbit · scroll or pinch to zoom · tap a window</span>`;
 }
 
 /* ── Public API ──────────────────────────────────────────────────────────── */
@@ -1438,7 +1471,7 @@ document.getElementById('view-reset')?.addEventListener('click', resetView);
 
 window.addEventListener('nivas:building-change', event => {
   const detail = event.detail;
-  if (detail?.name) setBuilding(detail.name, detail.roomStatuses || {});
+  if (detail?.name) setBuilding(detail.name, detail.roomStatuses || {}, detail.floors);
 });
 window.addEventListener('nivas:room-focus', event => focusRoom(event.detail?.id || null));
 // Canvas text is drawn once, so redraw it when the web fonts arrive.

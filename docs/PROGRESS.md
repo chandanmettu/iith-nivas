@@ -1,6 +1,6 @@
 # Nivas — current progress
 
-Last updated: **2026-10-13** (v2 on branch `v2`, not yet deployed)
+Last updated: **2026-11-08** (v2 on branch `v2`, not yet deployed)
 
 Nivas is live at <https://nivas.iith.online> with a PHP/MySQL backend and real
 student-submitted listings. This file is the current operational summary. The
@@ -56,6 +56,33 @@ product enhancements, not deployment blockers.
 6. Verify both the live UI and affected API path with cache-busted requests.
 
 ## Recent production history
+
+### 2026-11-08: phone fixes and real hostel facts (branch `v2`, NOT pushed)
+
+- Owner reported v2 "sometimes glitches" on a real phone. Two likely causes
+  fixed: (1) phones fire `resize` whenever the address bar slides, and the
+  viewer resized the canvas even at the same size, which clears it and flashed
+  a blank frame; it now skips unchanged sizes and draws at once on a real
+  change. (2) Camera near/far was 0.5/900, too little depth precision for
+  phone GPUs, so bands and louvres shimmered; now 1.5/600 (fog ends at 420).
+- Owner's facts: Aryabhatta is a girls' hostel and Kapila is not this kind
+  of block, so both are removed (no live listings used either). Bhaskara stays
+  (shared by boys). Bhaskara, Brahmagupta, Charaka, Kautilya, Susruta,
+  Varahamihira and Vyasa have six floors (rooms 101-630); Bhabha, Kalam,
+  Raman, Ramanujan, Sarabhai and Viswesvaraya have ten (101-1030). 13 hostels.
+- The 3D hides floors above a hostel's top floor and drops the roof onto it;
+  the neighbours (the newer cluster) are hidden and the Surroundings button
+  disabled for six-floor hostels; readouts say "six"/"ten". Floor rail,
+  labels and new-listing validation follow the hostel. Existing listings are
+  never dropped, even on a floor a hostel does not have.
+- Server (`api/db.php`, `listings.php`, `bookmarks.php`): same 13 hostels,
+  per-hostel floor check, and 4-digit rooms for floor 10 (the old API allowed
+  only floors 1-9 while the page offered 10). Not runnable on the Mac (no PHP);
+  reviewed by hand, must be checked on the live host after the push.
+- Six-floor hostels still use the typical (newer-block) floor plan; their own
+  footprint is not traced. Labelled "TYPICAL PLAN, SIX FLOORS".
+- Cache keys: styles 50, app 35, viewer3d 34. Needs the owner's phone re-check
+  before merge and push.
 
 ### 2026-10-13: v2 of the 3D viewer and page polish (branch `v2`, NOT pushed)
 

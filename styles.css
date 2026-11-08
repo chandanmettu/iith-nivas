@@ -1914,3 +1914,6 @@ body { background: radial-gradient(900px 360px at 90% -90px, rgba(240, 90, 37, .
 .bookmarks-empty { margin: 0; color: var(--ink-500); font-size: var(--fs-sm); line-height: var(--lh-loose); }
 
 .modal-card--narrow { width: min(420px, 100%); }
+
+/* Surroundings exist only around the newer ten-floor blocks (2026-11-08). */
+.tool-btn:disabled { opacity: .45; cursor: not-allowed; }

@@ -10,14 +10,25 @@ declare(strict_types=1);
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
-const NIVAS_FLOOR_COUNT     = 9;
+const NIVAS_FLOOR_COUNT     = 10;  // the newer blocks; the older ones have six
 const NIVAS_ROOMS_PER_FLOOR = 30;   // pods of 8 / 8 / 6 / 8 — mirrors app.js
 
+// Aryabhatta (a girls' hostel) and Kapila (not this kind of block) are not listed.
 const NIVAS_HOSTELS = [
-    'Aryabhatta', 'Bhabha', 'Bhaskara', 'Brahmagupta', 'Charaka', 'Kalam',
-    'Kapila', 'Kautilya', 'Raman', 'Ramanujan', 'Sarabhai',
-    'Susruta', 'Varahamihira', 'Viswesvaraya', 'Vyasa',
+    'Bhabha', 'Bhaskara', 'Brahmagupta', 'Charaka', 'Kalam', 'Kautilya',
+    'Raman', 'Ramanujan', 'Sarabhai', 'Susruta', 'Varahamihira',
+    'Viswesvaraya', 'Vyasa',
 ];
+
+// The older blocks have six floors (rooms 101-630). Mirrors app.js.
+const NIVAS_SIX_FLOOR_HOSTELS = [
+    'Bhaskara', 'Brahmagupta', 'Charaka', 'Kautilya', 'Susruta', 'Varahamihira', 'Vyasa',
+];
+
+function nivas_floors_for(string $hostel): int
+{
+    return in_array($hostel, NIVAS_SIX_FLOOR_HOSTELS, true) ? 6 : NIVAS_FLOOR_COUNT;
+}
 
 function nivas_config(): array
 {
@@ -118,18 +129,20 @@ function nivas_hostel(?string $name): string
 }
 
 /**
- * Rooms are three digits: floor 1-9, then 01-30. Returns '' when invalid, so
- * a bad room can never reach the database.
+ * Rooms are the floor then 01-30: 101-1030 in the newer blocks, 101-630 in the
+ * older ones. Returns '' when invalid, so a bad room can never reach the database.
+ * Without a hostel only the widest range is checked.
  */
-function nivas_room(?string $value): string
+function nivas_room(?string $value, string $hostel = ''): string
 {
     $digits = preg_replace('/\D/', '', (string) $value) ?? '';
-    if (!preg_match('/^\d{3}$/', $digits)) {
+    if (!preg_match('/^\d{3,4}$/', $digits)) {
         return '';
     }
-    $floor = (int) $digits[0];
-    $index = (int) substr($digits, 1);
-    if ($floor < 1 || $floor > NIVAS_FLOOR_COUNT) return '';
+    $floor = (int) substr($digits, 0, -2);
+    $index = (int) substr($digits, -2);
+    $top   = $hostel === '' ? NIVAS_FLOOR_COUNT : nivas_floors_for($hostel);
+    if ($floor < 1 || $floor > $top) return '';
     if ($index < 1 || $index > NIVAS_ROOMS_PER_FLOOR) return '';
     return $digits;
 }

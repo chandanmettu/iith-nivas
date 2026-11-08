@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
     <!-- Bump ?v= on every CSS/JS change — shared hosting CDNs serve stale assets otherwise. -->
-    <link rel="stylesheet" href="./styles.css?v=49" />
+    <link rel="stylesheet" href="./styles.css?v=50" />
     <!-- The 3D viewer's imports, fetched in parallel with the page instead of
          one after another once viewer3d.js has been parsed. -->
     <link rel="modulepreload" href="./vendor/three-r185/three.module.min.js" />
@@ -48,7 +48,7 @@
 
             <div class="topbar-tag">
               <span>STUDENT ROOM SWAP</span>
-              <small>15 hostels · listings posted by students</small>
+              <small>13 hostels · listings posted by students</small>
             </div>
           </div>
 
@@ -128,7 +128,7 @@
                 <canvas id="hostel-3d-canvas" aria-label="Interactive 3D IIT Hyderabad hostel building"></canvas>
                 <div class="three-title">
                   <span id="three-building-label">VARAHAMIHIRA · TRACED FROM THE ARCHITECT’S PLAN</span>
-                  <small id="three-building-meta">4 pods · 10 floors · 30 rooms a floor</small>
+                  <small id="three-building-meta">4 pods · 6 floors · 30 rooms a floor</small>
                 </div>
                 <div class="three-loader" aria-hidden="true">
                   <span class="loader-louvre"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
@@ -178,7 +178,7 @@
                 <div class="site-card">
                   <div class="site-card-cap">CURRENTLY VIEWING</div>
                   <strong id="site-card-building">Varahamihira</strong>
-                  <span>10 floors · 30 rooms per floor</span>
+                  <span id="site-card-meta">6 floors · 30 rooms per floor</span>
                   <button class="btn btn--primary btn--block" id="enter-building">Enter building <b>→</b></button>
                 </div>
               </div>
@@ -387,7 +387,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./app.js?v=34"></script>
-    <script type="module" src="./viewer3d.js?v=31"></script>
+    <script src="./app.js?v=35"></script>
+    <script type="module" src="./viewer3d.js?v=34"></script>
   </body>
 </html>
