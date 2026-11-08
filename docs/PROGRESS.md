@@ -1,6 +1,6 @@
 # Nivas — current progress
 
-Last updated: **2026-11-08** (v2 on branch `v2`, not yet deployed)
+Last updated: **2026-11-08** (v2 live)
 
 Nivas is live at <https://nivas.iith.online> with a PHP/MySQL backend and real
 student-submitted listings. This file is the current operational summary. The
@@ -57,7 +57,7 @@ product enhancements, not deployment blockers.
 
 ## Recent production history
 
-### 2026-11-08: phone fixes and real hostel facts (branch `v2`, NOT pushed)
+### 2026-11-08: v2 LIVE, with phone fixes and real hostel facts
 
 - Owner reported v2 "sometimes glitches" on a real phone. Two likely causes
   fixed: (1) phones fire `resize` whenever the address bar slides, and the
@@ -81,8 +81,12 @@ product enhancements, not deployment blockers.
   reviewed by hand, must be checked on the live host after the push.
 - Six-floor hostels still use the typical (newer-block) floor plan; their own
   footprint is not traced. Labelled "TYPICAL PLAN, SIX FLOORS".
-- Cache keys: styles 50, app 35, viewer3d 34. Needs the owner's phone re-check
-  before merge and push.
+- Cache keys: styles 50, app 35, viewer3d 34. Owner said push; `v2` fast-forwarded
+  into `main` (`db921cb`) and verified live: v2 files served (WebP as image/webp),
+  Varahamihira shows six floors with its 11 listings, 28 campus-wide, listings
+  GET and a read-only bookmarks call run the new PHP. Owner had not yet confirmed
+  the phone glitch is gone. Next: campus view of all hostels (owner's idea), tap
+  one to isolate it; needs him to name OSM blocks C, D, F, G.
 
 ### 2026-10-13: v2 of the 3D viewer and page polish (branch `v2`, NOT pushed)
 
